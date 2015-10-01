@@ -87,7 +87,7 @@ impl State {
         self.memory[self.index % MEMSIZE] = value;
     }
 
-    fn step(&mut self, op: &Op) {
+    fn step(&mut self, op: &Op) -> bool {
         match op {
             &Add(i) => {
                 // XXX: Ugly expression due to lexical scoping of borrow,
@@ -100,7 +100,9 @@ impl State {
             }
             &In => {
                 let mut c = vec![0u8];
-                io::stdin().read(&mut c).unwrap();
+                if io::stdin().read(&mut c).unwrap() == 0 {
+                    return false;
+                }
                 self.poke(c[0]);
             }
             &Out => {
@@ -108,16 +110,22 @@ impl State {
             }
             &Loop(ref ops) => {
                 while self.peek() != 0 {
-                    self.run(ops.get());
+                    if !self.run(ops.get()) {
+                        return false;
+                    }
                 }
             }
         }
+        return true;
     }
 
-    fn run(&mut self, ops: &[Op]) {
+    fn run(&mut self, ops: &[Op]) -> bool {
         for op in ops {
-            self.step(op);
+            if !self.step(op) {
+                return false;
+            }
         }
+        return true;
     }
 }
 
