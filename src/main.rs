@@ -79,7 +79,7 @@ impl OpStream {
         for op in &self.ops[..] {
             match op {
                 &Add(x) => {
-                    let new_val = map.get(&rel_index).map_or(0, |v| *v).wrapping_add(x);
+                    let new_val = map.get(&rel_index).unwrap_or(&0).wrapping_add(x);
                     map.insert(rel_index, new_val);
                 }
                 &Mov(x) => {
