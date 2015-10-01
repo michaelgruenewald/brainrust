@@ -48,6 +48,9 @@ impl OpStream {
                     self.ops[i] = Mov(a + b);
                     self.ops.remove(i + 1);
                 }
+                [Add(0), ..] | [Mov(0), ..] => {
+                    self.ops.remove(i);
+                }
                 _ => i += 1
             }
         }
