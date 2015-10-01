@@ -67,10 +67,10 @@ fn main() {
         let mut state = State { index: 0, memory: [0; 256] };
         let mut chars = reader.chars().peekable();
 
-        'run: loop {
+        loop {
             match parse(&mut chars) {
                 Something(op) => state.step(&op),
-                EOF => break'run,
+                EOF => break,
                 _ => {}
             }
         }
