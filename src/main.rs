@@ -69,6 +69,26 @@ impl State {
     }
 }
 
+#[test]
+fn test_state_peek() {
+    let mut state = State::new();
+    state.memory[state.index] = 23;
+    assert_eq!(23, state.peek());
+    state.index = 5;
+    state.memory[state.index] = 42;
+    assert_eq!(42, state.peek());
+}
+
+#[test]
+fn test_state_poke() {
+    let mut state = State::new();
+    state.poke(23);
+    assert_eq!(23, state.memory[state.index]);
+    state.index = 5;
+    state.poke(42);
+    assert_eq!(42, state.memory[state.index]);
+}
+
 fn main() {
     let filenames: Vec<String> = std::iter::FromIterator::from_iter(std::env::args());
 
