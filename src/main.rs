@@ -197,6 +197,19 @@ mod tests {
     use super::{State, OpStream};
     use super::Op::*;
 
+    macro_rules! assert_let(
+        ($test:pat, $value:expr, $then:block) => (
+            if let $test = $value {
+                $then
+            } else {
+                panic!("{:?} doesn't match {}", $value, stringify!($test))
+            }
+        );
+        ($test:pat, $value:expr) => (
+            assert_let!($test, $value, {})
+        );
+    );
+
     #[test]
     fn state_peek() {
         let mut state = State::new();
@@ -245,5 +258,32 @@ mod tests {
         state.poke(23);
         state.step(&Loop(OpStream { ops: vec![Add(1)] }));
         assert_eq!(0, state.peek());
+    }
+
+    #[test]
+    fn opstream_new_empty() {
+        let opstream = OpStream::new();
+        assert_eq!(0, opstream.ops.len());
+    }
+
+    #[test]
+    fn opstream_optimize() {
+        let mut opstream = OpStream::new();
+        opstream.add(Mov(1));
+        opstream.add(Mov(1));
+        opstream.add(Add(1));
+        opstream.add(Add(-1));
+        opstream.add(Add(-1));
+        opstream.add(Mov(1));
+        opstream.add(Mov(-1));
+        let mut opstream2 = OpStream::new();
+        opstream2.add(Mov(2));
+        opstream2.add(Mov(3));
+        opstream.add(Loop(opstream2));
+        opstream.optimize();
+
+        assert_let!([Mov(2), Add(-1), Loop(ref s2)], &opstream.ops[..], {
+            assert_let!([Mov(5)], &s2.ops[..]);
+        });
     }
 }
