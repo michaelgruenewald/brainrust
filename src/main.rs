@@ -1,4 +1,4 @@
-#![feature(core, io, slice_patterns)]
+#![feature(io, slice_patterns)]
 use std::fs;
 use std::io;
 use std::io::{Read, Write};
@@ -169,7 +169,10 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
             '.' => Something(Out),
             '[' => {
                 let mut childstream = OpStream::new();
-                while chars.peek() != Some(&Ok(']')) {
+                while match chars.peek() {
+                    Some(&Ok(c)) if c != ']' => true,
+                    _ => false
+                } {
                     match parse(&mut chars) {
                         Something(op) => childstream.add(op),
                         Nothing => {},
