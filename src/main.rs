@@ -1,5 +1,9 @@
-#![feature(env, old_path, old_io)]
-use std::old_io as io;
+#![feature(env, fs, io, old_io, path)]
+use std::fs;
+use std::io;
+use std::io::ReadExt;
+use std::old_io::stdio;
+use std::path::Path;
 
 enum ParserResult {
     Something(Op),
@@ -39,10 +43,10 @@ impl State {
             &Add(i) => { let x = self.peek(); self.poke(x + i); },
             &Mov(n) => self.index += n,
             &In => {
-                self.poke(io::stdio::stdin().read_u8().unwrap());
+                self.poke(stdio::stdin().read_u8().unwrap());
             },
             &Out => {
-                io::stdio::stdout().write_u8(self.peek()).unwrap();
+                stdio::stdout().write_u8(self.peek()).unwrap();
             },
             &Loop(ref ops) => {
                 while self.peek() != 0 {
@@ -63,7 +67,7 @@ fn main() {
     let filenames: Vec<String> = std::iter::FromIterator::from_iter(std::env::args());
 
     for filename in &filenames[1..] {
-        let mut reader = reader(&Path::new(filename));
+        let reader = reader(&Path::new(filename));
         let mut state = State { index: 0, memory: [0; 256] };
         let mut chars = reader.chars().peekable();
 
@@ -77,7 +81,7 @@ fn main() {
     }
 }
 
-fn parse(mut chars: &mut std::iter::Peekable<io::Chars<io::BufferedReader<io::fs::File>>>) -> ParserResult {
+fn parse(mut chars: &mut std::iter::Peekable<io::Chars<io::BufReader<fs::File>>>) -> ParserResult {
     match chars.next() {
         Some(Ok(c)) => match c {
             '+' => Something(Add(1)),
@@ -104,9 +108,9 @@ fn parse(mut chars: &mut std::iter::Peekable<io::Chars<io::BufferedReader<io::fs
     }
 }
 
-fn reader(path: &Path) -> io::BufferedReader<io::File> {
-    match io::File::open_mode(path, io::Open, io::Read) {
-        Ok(f) => io::BufferedReader::new(f),
+fn reader(path: &Path) -> io::BufReader<fs::File> {
+    match fs::File::open(path) {
+        Ok(f) => io::BufReader::new(f),
         Err(e) => panic!(e)
     }
 }
