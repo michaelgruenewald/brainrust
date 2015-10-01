@@ -39,13 +39,10 @@ impl State {
             &Add(i) => { let x = self.peek(); self.poke(x + i); },
             &Mov(n) => self.index += n,
             &In => {
-                match io::stdio::stdin().read_u8() {
-                    Ok(c) => self.poke(c),
-                    Err(e) => panic!(e)
-                }
+                self.poke(io::stdio::stdin().read_u8().unwrap());
             },
             &Out => {
-                io::stdio::stdout().write_u8(self.peek());
+                io::stdio::stdout().write_u8(self.peek()).unwrap();
             },
             &Loop(ref ops) => {
                 while self.peek() != 0 {
