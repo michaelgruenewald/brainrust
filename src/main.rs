@@ -118,7 +118,7 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
             '.' => Something(Out),
             '[' => {
                 let mut children: Ops = Vec::new();
-                while !(chars.peek() == Some(&Ok(']'))) {
+                while chars.peek() != Some(&Ok(']')) {
                     match parse(&mut chars) {
                         Something(op) => children.push(op),
                         Nothing => {},
