@@ -94,15 +94,36 @@ fn main() {
 
     for filename in &filenames[1..] {
         let reader = reader(&Path::new(filename));
-        let mut state = State::new();
         let mut chars = reader.chars().peekable();
 
+        let mut ops: Ops = Vec::new();
         loop {
             match parse(&mut chars) {
-                Something(op) => state.step(&op),
+                Something(op) => ops.push(op),
                 EOF => break,
                 _ => {}
             }
+        }
+
+        optimize(&mut ops);
+
+        State::new().run(&ops);
+    }
+}
+
+fn optimize(ops: &mut Ops) {
+    let mut i = 0;
+    while (i + 1) < ops.len() {
+        match &vec![&ops[i], &ops[i+1]][..] {
+            [&Add(a), &Add(b)] => {
+                ops[i] = Add(a + b);
+                ops.remove(i + 1);
+            },
+            [&Mov(a), &Mov(b)] => {
+                ops[i] = Mov(a + b);
+                ops.remove(i + 1);
+            },
+            _ => i += 1
         }
     }
 }
@@ -126,6 +147,7 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
                     }
                 }
                 chars.next();
+                optimize(&mut children);
                 Something(Loop(children))
             },
             _ => Nothing  // other characters
