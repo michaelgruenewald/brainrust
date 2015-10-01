@@ -58,14 +58,14 @@ impl OpStream {
 
                     if let &mut Loop(ref mut stream) = &mut self.ops[i] {
                         stream.optimize();
-                        match &mut stream.ops[..] {
+                        match &stream.ops[..] {
                             [Add(x)] if x % 2 != 0 => {
                                 maybe_new_op = Some(Clear);
                             }
-                            [Add(255), Mov(x), Add(1), Mov(y)] if x == -y => {
+                            [Add(a), Mov(x), Add(b), Mov(y)] if a.wrapping_add(b) == 0 && a % 2 != 0 && x == -y => {
                                 maybe_new_op = Some(ClearAdd(x))
                             }
-                            [Add(255), Mov(x), Add(255), Mov(y)] if x == -y => {
+                            [Add(a), Mov(x), Add(b), Mov(y)] if a == b && a % 2 != 0 && x == -y => {
                                 maybe_new_op = Some(ClearSub(x))
                             }
                             _ => ()
