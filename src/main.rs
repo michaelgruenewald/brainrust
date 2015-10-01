@@ -21,7 +21,9 @@ enum Op {
     Out,
     Loop(OpStream),
 
-    Clear
+    Clear,
+    ClearAdd(isize),
+    ClearSub(isize)
 }
 
 use Op::*;
@@ -59,6 +61,12 @@ impl OpStream {
                         match &mut stream.ops[..] {
                             [Add(x)] if x % 2 != 0 => {
                                 maybe_new_op = Some(Clear);
+                            }
+                            [Add(255), Mov(x), Add(1), Mov(y)] if x == -y => {
+                                maybe_new_op = Some(ClearAdd(x))
+                            }
+                            [Add(255), Mov(x), Add(255), Mov(y)] if x == -y => {
+                                maybe_new_op = Some(ClearSub(x))
                             }
                             _ => ()
                         }
@@ -127,6 +135,18 @@ impl State {
             }
             &Clear => {
                 self[0] = 0;
+            }
+            &ClearAdd(offset) => {
+                if self[0] != 0 {
+                    self[offset] = self[offset].wrapping_add(self[0]);
+                    self[0] = 0;
+                }
+            }
+            &ClearSub(offset) => {
+                if self[0] != 0 {
+                    self[offset] = self[offset].wrapping_sub(self[0]);
+                    self[0] = 0;
+                }
             }
         }
         return true;
