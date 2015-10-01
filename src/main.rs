@@ -118,25 +118,6 @@ impl State {
     }
 }
 
-#[test]
-fn test_state_peek() {
-    let mut state = State::new();
-    state.memory[state.index] = 23;
-    assert_eq!(23, state.peek());
-    state.index = 5;
-    state.memory[state.index] = 42;
-    assert_eq!(42, state.peek());
-}
-
-#[test]
-fn test_state_poke() {
-    let mut state = State::new();
-    state.poke(23);
-    assert_eq!(23, state.memory[state.index]);
-    state.index = 5;
-    state.poke(42);
-    assert_eq!(42, state.memory[state.index]);
-}
 
 fn main() {
     let filenames: Vec<String> = std::iter::FromIterator::from_iter(std::env::args());
@@ -189,4 +170,60 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
 
 fn reader(path: &Path) -> io::BufReader<fs::File> {
     io::BufReader::new(fs::File::open(path).unwrap())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{State, OpStream};
+    use super::Op::*;
+
+    #[test]
+    fn state_peek() {
+        let mut state = State::new();
+        state.memory[state.index] = 23;
+        assert_eq!(23, state.peek());
+        state.index = 5;
+        state.memory[state.index] = 42;
+        assert_eq!(42, state.peek());
+    }
+
+    #[test]
+    fn state_poke() {
+        let mut state = State::new();
+        state.poke(23);
+        assert_eq!(23, state.memory[state.index]);
+        state.index = 5;
+        state.poke(42);
+        assert_eq!(42, state.memory[state.index]);
+    }
+
+    #[test]
+    fn state_step_add() {
+        let mut state = State::new();
+        state.step(&Add(23));
+        assert_eq!(23, state.peek());
+        state.step(&Add(42));
+        assert_eq!(65, state.peek());
+        state.step(&Add(-66));
+        assert_eq!(-1, state.peek());
+    }
+
+    #[test]
+    fn state_step_mov() {
+        let mut state = State::new();
+        state.step(&Mov(1));
+        assert_eq!(1, state.index);
+        state.step(&Mov(42));
+        assert_eq!(43, state.index);
+        state.step(&Mov(-1));
+        assert_eq!(42, state.index);
+    }
+
+    #[test]
+    fn state_step_loop() {
+        let mut state = State::new();
+        state.poke(23);
+        state.step(&Loop(OpStream { ops: vec![Add(1)] }));
+        assert_eq!(0, state.peek());
+    }
 }
