@@ -6,6 +6,7 @@ use std::path::Path;
 
 const MEMSIZE: usize = 4096;
 
+#[derive(Debug)]
 enum ParserResult {
     Something(Op),
     Nothing,
@@ -195,7 +196,9 @@ fn reader(path: &Path) -> Result<io::BufReader<fs::File>, io::Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::{State, OpStream};
+    use std::io;
+    use std::io::Read;
+    use super::{parse, ParserResult, State, OpStream};
     use super::Op::*;
 
     macro_rules! assert_let(
@@ -286,5 +289,17 @@ mod tests {
         assert_let!([Mov(2), Add(-1), Loop(ref s2)], &opstream.ops[..], {
             assert_let!([Mov(5)], &s2.ops[..]);
         });
+    }
+
+    #[test]
+    fn test_parse() {
+        let input = b"+-[+.,]+";
+        let mut chars = io::BufReader::new(&input[..]).chars().peekable();
+        assert_let!(ParserResult::Something(Add(1)), parse(&mut chars));
+        assert_let!(ParserResult::Something(Add(-1)), parse(&mut chars));
+        assert_let!(ParserResult::Something(Loop(loop_op)), parse(&mut chars), {
+            assert_let!([Add(1), Out, In], &loop_op.ops[..]);
+        });
+        assert_let!(ParserResult::Something(Add(1)), parse(&mut chars));
     }
 }
