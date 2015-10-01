@@ -19,7 +19,9 @@ enum Op {
     Mov(isize),
     In,
     Out,
-    Loop(OpStream)
+    Loop(OpStream),
+
+    Clear
 }
 
 use Op::*;
@@ -50,10 +52,23 @@ impl OpStream {
                     self.ops.remove(i);
                 }
                 [Loop(_), ..] => {
+                    let mut maybe_new_op: Option<Op> = None;
+
                     if let &mut Loop(ref mut stream) = &mut self.ops[i] {
                         stream.optimize();
+                        match &mut stream.ops[..] {
+                            [Add(x)] if x % 2 != 0 => {
+                                maybe_new_op = Some(Clear);
+                            }
+                            _ => ()
+                        }
                     }
-                    i += 1
+
+                    if let Some(new_op) = maybe_new_op {
+                        self.ops[i] = new_op;
+                    } else {
+                        i += 1
+                    }
                 }
                 _ => i += 1
             }
@@ -109,6 +124,9 @@ impl State {
                         return false;
                     }
                 }
+            }
+            &Clear => {
+                self[0] = 0;
             }
         }
         return true;
