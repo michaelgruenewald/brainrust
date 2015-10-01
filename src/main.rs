@@ -1,4 +1,5 @@
 #![feature(collections, io, slice_patterns)]
+use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::io::{Read, Write};
@@ -21,9 +22,8 @@ enum Op {
     Out,
     Loop(OpStream),
 
-    Clear,
-    ClearAdd(isize),
-    ClearSub(isize)
+    // extra optimized ops
+    Transfer(u8, Vec<(isize, u8)>)
 }
 
 use Op::*;
@@ -54,32 +54,50 @@ impl OpStream {
                     self.ops.remove(i);
                 }
                 [Loop(_), ..] => {
-                    let mut maybe_new_op: Option<Op> = None;
+                    let mut maybe_new_op = None;
 
                     if let &mut Loop(ref mut stream) = &mut self.ops[i] {
                         stream.optimize();
-                        match &stream.ops[..] {
-                            [Add(x)] if x % 2 != 0 => {
-                                maybe_new_op = Some(Clear);
-                            }
-                            [Add(a), Mov(x), Add(b), Mov(y)] if a.wrapping_add(b) == 0 && a % 2 != 0 && x == -y => {
-                                maybe_new_op = Some(ClearAdd(x))
-                            }
-                            [Add(a), Mov(x), Add(b), Mov(y)] if a == b && a % 2 != 0 && x == -y => {
-                                maybe_new_op = Some(ClearSub(x))
-                            }
-                            _ => ()
-                        }
+                        maybe_new_op = stream.find_alternative();
                     }
 
                     if let Some(new_op) = maybe_new_op {
                         self.ops[i] = new_op;
-                    } else {
-                        i += 1
                     }
+
+                    i += 1
                 }
                 _ => i += 1
             }
+        }
+    }
+
+    fn find_alternative(&self) -> Option<Op> {
+        let mut map: BTreeMap<isize, u8> = BTreeMap::new();
+        let mut rel_index = 0;
+
+        for op in &self.ops[..] {
+            match op {
+                &Add(x) => {
+                    let new_val = map.get(&rel_index).map_or(0, |v| *v).wrapping_add(x);
+                    map.insert(rel_index, new_val);
+                }
+                &Mov(x) => {
+                    rel_index += x;
+                }
+                _ => {
+                    return None;
+                }
+            }
+        }
+
+        if rel_index != 0 {
+            return None;
+        }
+
+        match map.remove(&0) {
+            Some(summand) => Some(Transfer(summand, map.into_iter().collect())),
+            None => None
         }
     }
 
@@ -133,19 +151,27 @@ impl State {
                     }
                 }
             }
-            &Clear => {
-                self[0] = 0;
-            }
-            &ClearAdd(offset) => {
-                if self[0] != 0 {
-                    self[offset] = self[offset].wrapping_add(self[0]);
+            &Transfer(d, ref map) => {
+                let n = match (self[0], d) {
+                    (0, _) => 0,
+                    (x, 0xff) => x,
+                    (x, 0x01) => 0u8.wrapping_sub(x),
+                    (x, _) => {
+                        let mut _v = x;
+                        let mut _n = 0;
+                        while _v != 0 {
+                            _v = _v.wrapping_add(d);
+                            _n += 1
+                        }
+                        _n
+                    }
+                };
+
+                if n > 0 {
                     self[0] = 0;
-                }
-            }
-            &ClearSub(offset) => {
-                if self[0] != 0 {
-                    self[offset] = self[offset].wrapping_sub(self[0]);
-                    self[0] = 0;
+                    for &(k, v) in &map[..] {
+                        self[k] = self[k].wrapping_add(v.wrapping_mul(n));
+                    }
                 }
             }
         }
