@@ -212,7 +212,7 @@ mod tests {
     );
 
     #[test]
-    fn state_peek() {
+    fn test_state_peek() {
         let mut state = State::new();
         state.memory[state.index] = 23;
         assert_eq!(23, state.peek());
@@ -222,7 +222,7 @@ mod tests {
     }
 
     #[test]
-    fn state_poke() {
+    fn test_state_poke() {
         let mut state = State::new();
         state.poke(23);
         assert_eq!(23, state.memory[state.index]);
@@ -232,7 +232,7 @@ mod tests {
     }
 
     #[test]
-    fn state_step_add() {
+    fn test_state_step_add() {
         let mut state = State::new();
         state.step(&Add(23));
         assert_eq!(23, state.peek());
@@ -243,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    fn state_step_mov() {
+    fn test_state_step_mov() {
         let mut state = State::new();
         state.step(&Mov(1));
         assert_eq!(1, state.index);
@@ -254,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn state_step_loop() {
+    fn test_state_step_loop() {
         let mut state = State::new();
         state.poke(23);
         state.step(&Loop(OpStream { ops: vec![Add(1)] }));
@@ -262,13 +262,13 @@ mod tests {
     }
 
     #[test]
-    fn opstream_new_empty() {
+    fn test_opstream_new_empty() {
         let opstream = OpStream::new();
         assert_eq!(0, opstream.ops.len());
     }
 
     #[test]
-    fn opstream_optimize() {
+    fn test_opstream_optimize() {
         let mut opstream = OpStream::new();
         opstream.add(Mov(1));
         opstream.add(Mov(1));
