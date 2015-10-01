@@ -38,16 +38,16 @@ impl OpStream {
 
     fn optimize(&mut self) {
         let mut i = 0;
-        while (i + 1) < self.ops.len() {
-            match &vec![&self.ops[i], &self.ops[i+1]][..] {
-                [&Add(a), &Add(b)] => {
+        while i < self.ops.len() {
+            match &self.ops[i..] {
+                [Add(a), Add(b), ..] => {
                     self.ops[i] = Add(a + b);
                     self.ops.remove(i + 1);
-                },
-                [&Mov(a), &Mov(b)] => {
+                }
+                [Mov(a), Mov(b), ..] => {
                     self.ops[i] = Mov(a + b);
                     self.ops.remove(i + 1);
-                },
+                }
                 _ => i += 1
             }
         }
