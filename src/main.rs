@@ -45,7 +45,7 @@ impl OpStream {
                     self.ops.remove(i + 1);
                 }
                 [Mov(a), Mov(b), ..] => {
-                    self.ops[i] = Mov(a.wrapping_add(b));
+                    self.ops[i] = Mov((a + b) % MEMSIZE);
                     self.ops.remove(i + 1);
                 }
                 [Add(0), ..] | [Mov(0), ..] => {
@@ -98,7 +98,7 @@ impl State {
                 self.poke(x.wrapping_add(i));
             }
             &Mov(n) => {
-                self.index = self.index.wrapping_add(n);
+                self.index = (self.index + n) % MEMSIZE;
             }
             &In => {
                 let mut c = vec![0u8];
@@ -163,9 +163,9 @@ fn main() {
 fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> ParserResult {
     match chars.next() {
         Some(Ok(c)) => match c {
-            '+' => Something(Add(1)),
-            '-' => Something(Add(-1)),
-            '<' => Something(Mov(-1)),
+            '+' => Something(Add(0x01)),
+            '-' => Something(Add(0xff)),
+            '<' => Something(Mov(MEMSIZE-1)),
             '>' => Something(Mov(1)),
             ',' => Something(In),
             '.' => Something(Out),
@@ -198,7 +198,7 @@ fn reader(path: &Path) -> Result<io::BufReader<fs::File>, io::Error> {
 mod tests {
     use std::io;
     use std::io::Read;
-    use super::{parse, ParserResult, State, OpStream};
+    use super::{MEMSIZE, parse, ParserResult, State, OpStream};
     use super::Op::*;
 
     macro_rules! assert_let(
@@ -241,8 +241,8 @@ mod tests {
         assert_eq!(23, state.peek());
         state.step(&Add(42));
         assert_eq!(65, state.peek());
-        state.step(&Add(-66));
-        assert_eq!(-1, state.peek());
+        state.step(&Add(190));
+        assert_eq!(255, state.peek());
     }
 
     #[test]
@@ -252,7 +252,7 @@ mod tests {
         assert_eq!(1, state.index);
         state.step(&Mov(42));
         assert_eq!(43, state.index);
-        state.step(&Mov(-1));
+        state.step(&Mov(MEMSIZE-1));
         assert_eq!(42, state.index);
     }
 
@@ -275,18 +275,18 @@ mod tests {
         let mut opstream = OpStream::new();
         opstream.add(Mov(1));
         opstream.add(Mov(1));
-        opstream.add(Add(1));
-        opstream.add(Add(-1));
-        opstream.add(Add(-1));
+        opstream.add(Add(0x01));
+        opstream.add(Add(0xff));
+        opstream.add(Add(0xff));
         opstream.add(Mov(1));
-        opstream.add(Mov(-1));
+        opstream.add(Mov(MEMSIZE-1));
         let mut opstream2 = OpStream::new();
         opstream2.add(Mov(2));
         opstream2.add(Mov(3));
         opstream.add(Loop(opstream2));
         opstream.optimize();
 
-        assert_let!([Mov(2), Add(-1), Loop(ref s2)], &opstream.ops[..], {
+        assert_let!([Mov(2), Add(0xff), Loop(ref s2)], &opstream.ops[..], {
             assert_let!([Mov(5)], &s2.ops[..]);
         });
     }
@@ -295,8 +295,8 @@ mod tests {
     fn test_parse() {
         let input = b"+-[+.,]+";
         let mut chars = io::BufReader::new(&input[..]).chars().peekable();
-        assert_let!(ParserResult::Something(Add(1)), parse(&mut chars));
-        assert_let!(ParserResult::Something(Add(-1)), parse(&mut chars));
+        assert_let!(ParserResult::Something(Add(0x01)), parse(&mut chars));
+        assert_let!(ParserResult::Something(Add(0xff)), parse(&mut chars));
         assert_let!(ParserResult::Something(Loop(loop_op)), parse(&mut chars), {
             assert_let!([Add(1), Out, In], &loop_op.ops[..]);
         });
