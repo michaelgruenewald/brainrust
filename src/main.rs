@@ -1,7 +1,7 @@
-#![feature(io, path)]
+#![feature(io)]
 use std::fs;
 use std::io;
-use std::io::{Read, ReadExt, Write};
+use std::io::{Read, Write};
 use std::path::Path;
 
 const MEMSIZE: usize = 4096;
