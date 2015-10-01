@@ -62,7 +62,7 @@ impl State {
 fn main() {
     let filenames: Vec<String> = std::iter::FromIterator::from_iter(std::env::args());
 
-    for filename in filenames[1..].iter() {
+    for filename in &filenames[1..] {
         let mut reader = reader(&Path::new(filename));
         let mut state = State { index: 0, memory: [0; 256] };
         let mut chars = reader.chars().peekable();
