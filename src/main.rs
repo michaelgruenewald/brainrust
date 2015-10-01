@@ -252,7 +252,7 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
                 let mut childstream = OpStream::new();
                 while match chars.peek() {
                     Some(&Ok(c)) => c != ']',
-                    _ => false
+                    _ => panic!("Unterminated loop")
                 } {
                     match parse(&mut chars) {
                         Something(op) => childstream.add(op),
