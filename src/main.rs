@@ -1,4 +1,4 @@
-#![feature(io)]
+#![feature(core, io)]
 use std::fs;
 use std::io;
 use std::io::{Read, Write};
@@ -40,11 +40,11 @@ impl OpStream {
         while i < self.ops.len() {
             match &self.ops[i..] {
                 [Add(a), Add(b), ..] => {
-                    self.ops[i] = Add(a + b);
+                    self.ops[i] = Add(a.wrapping_add(b));
                     self.ops.remove(i + 1);
                 }
                 [Mov(a), Mov(b), ..] => {
-                    self.ops[i] = Mov(a + b);
+                    self.ops[i] = Mov(a.wrapping_add(b));
                     self.ops.remove(i + 1);
                 }
                 [Add(0), ..] | [Mov(0), ..] => {
@@ -93,10 +93,10 @@ impl State {
                 // XXX: Ugly expression due to lexical scoping of borrow,
                 //      cf. https://github.com/rust-lang/rust/issues/6393
                 let x = self.peek();
-                self.poke(x + i);
+                self.poke(x.wrapping_add(i));
             }
             &Mov(n) => {
-                self.index += n
+                self.index = self.index.wrapping_add(n);
             }
             &In => {
                 let mut c = vec![0u8];
