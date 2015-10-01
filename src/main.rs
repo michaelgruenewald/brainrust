@@ -1,10 +1,8 @@
-#![feature(io, slice_patterns)]
+#![feature(collections, io, slice_patterns)]
 use std::fs;
 use std::io;
 use std::io::{Read, Write};
 use std::path::Path;
-
-const MEMSIZE: usize = 4096;
 
 #[derive(Debug)]
 enum ParserResult {
@@ -18,7 +16,7 @@ use ParserResult::*;
 #[derive(Debug)]
 enum Op {
     Add(u8),
-    Mov(usize),
+    Mov(isize),
     In,
     Out,
     Loop(OpStream)
@@ -45,7 +43,7 @@ impl OpStream {
                     self.ops.remove(i + 1);
                 }
                 [Mov(a), Mov(b), ..] => {
-                    self.ops[i] = Mov((a + b) % MEMSIZE);
+                    self.ops[i] = Mov(a + b);
                     self.ops.remove(i + 1);
                 }
                 [Add(0), ..] | [Mov(0), ..] => {
@@ -73,20 +71,27 @@ impl OpStream {
 
 struct State {
     index: usize,
-    memory: [u8; MEMSIZE]
+    memory: Vec<u8>
 }
 
 impl State {
     fn new() -> State {
-        State { index: 0, memory: [0; MEMSIZE] }
+        State { index: 0, memory: vec![] }
     }
 
     fn peek(&self) -> u8 {
-        self.memory[self.index % MEMSIZE]
+        if self.index >= self.memory.len() {
+            0
+        } else {
+            self.memory[self.index]
+        }
     }
 
     fn poke(&mut self, value: u8) {
-        self.memory[self.index % MEMSIZE] = value;
+        if self.index >= self.memory.len() {
+            self.memory.resize(self.index * 2 + 1, 0);
+        }
+        self.memory[self.index] = value;
     }
 
     fn step(&mut self, op: &Op) -> bool {
@@ -98,7 +103,7 @@ impl State {
                 self.poke(x.wrapping_add(i));
             }
             &Mov(n) => {
-                self.index = (self.index + n) % MEMSIZE;
+                self.index = (self.index as isize + n) as usize;
             }
             &In => {
                 let mut c = vec![0u8];
@@ -165,7 +170,7 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
         Some(Ok(c)) => match c {
             '+' => Something(Add(0x01)),
             '-' => Something(Add(0xff)),
-            '<' => Something(Mov(MEMSIZE-1)),
+            '<' => Something(Mov(-1)),
             '>' => Something(Mov(1)),
             ',' => Something(In),
             '.' => Something(Out),
@@ -198,7 +203,7 @@ fn reader(path: &Path) -> Result<io::BufReader<fs::File>, io::Error> {
 mod tests {
     use std::io;
     use std::io::Read;
-    use super::{MEMSIZE, parse, ParserResult, State, OpStream};
+    use super::{parse, ParserResult, State, OpStream};
     use super::Op::*;
 
     macro_rules! assert_let(
@@ -216,11 +221,9 @@ mod tests {
 
     #[test]
     fn test_state_peek() {
-        let mut state = State::new();
-        state.memory[state.index] = 23;
+        let mut state = State { index: 0, memory: vec![23, 0, 0, 0, 0, 42] };
         assert_eq!(23, state.peek());
         state.index = 5;
-        state.memory[state.index] = 42;
         assert_eq!(42, state.peek());
     }
 
@@ -252,7 +255,7 @@ mod tests {
         assert_eq!(1, state.index);
         state.step(&Mov(42));
         assert_eq!(43, state.index);
-        state.step(&Mov(MEMSIZE-1));
+        state.step(&Mov(-1));
         assert_eq!(42, state.index);
     }
 
@@ -279,7 +282,7 @@ mod tests {
         opstream.add(Add(0xff));
         opstream.add(Add(0xff));
         opstream.add(Mov(1));
-        opstream.add(Mov(MEMSIZE-1));
+        opstream.add(Mov(-1));
         let mut opstream2 = OpStream::new();
         opstream2.add(Mov(2));
         opstream2.add(Mov(3));
