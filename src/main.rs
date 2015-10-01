@@ -1,4 +1,4 @@
-#![feature(collections, io, slice_patterns)]
+#![feature(io, slice_patterns, vec_resize)]
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
