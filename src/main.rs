@@ -13,7 +13,7 @@ type Ops = Vec<Op>;
 enum Op {
     Add(u8),
     Mov(usize),
-    /*In,*/
+    In,
     Out,
     Loop(Ops)
 }
@@ -38,7 +38,15 @@ impl State {
         match op {
             &Add(i) => { let x = self.peek(); self.poke(x + i); },
             &Mov(n) => self.index += n,
-            &Out => print!("{}", std::str::from_utf8(vec![self.peek()].as_slice()).unwrap()),
+            &In => {
+                match io::stdio::stdin().read_u8() {
+                    Ok(c) => self.poke(c),
+                    Err(e) => panic!(e)
+                }
+            },
+            &Out => {
+                io::stdio::stdout().write_u8(self.peek());
+            },
             &Loop(ref ops) => {
                 while self.peek() != 0 {
                     self.run(ops);
@@ -74,24 +82,27 @@ fn main() {
 
 fn parse(mut chars: &mut std::iter::Peekable<io::Chars<io::BufferedReader<io::fs::File>>>) -> ParserResult {
     match chars.next() {
-        Some(Ok('+')) => Something(Add(1)),
-        Some(Ok('-')) => Something(Add(-1)),
-        Some(Ok('<')) => Something(Mov(-1)),
-        Some(Ok('>')) => Something(Mov(1)),
-        Some(Ok('.')) => Something(Out),
-        Some(Ok('[')) => {
-            let mut children: Ops = Vec::new();
-            while !(chars.peek() == Some(&Ok(']'))) {
-                match parse(&mut chars) {
-                    Something(op) => children.push(op),
-                    Nothing => {},
-                    EOF => panic!()
+        Some(Ok(c)) => match c {
+            '+' => Something(Add(1)),
+            '-' => Something(Add(-1)),
+            '<' => Something(Mov(-1)),
+            '>' => Something(Mov(1)),
+            ',' => Something(In),
+            '.' => Something(Out),
+            '[' => {
+                let mut children: Ops = Vec::new();
+                while !(chars.peek() == Some(&Ok(']'))) {
+                    match parse(&mut chars) {
+                        Something(op) => children.push(op),
+                        Nothing => {},
+                        EOF => panic!()
+                    }
                 }
-            }
-            chars.next();
-            Something(Loop(children))
+                chars.next();
+                Something(Loop(children))
+            },
+            _ => Nothing  // other characters
         },
-        Some(Ok(_)) => Nothing,
         _ => EOF
     }
 }
