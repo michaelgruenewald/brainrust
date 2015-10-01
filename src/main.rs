@@ -1,4 +1,4 @@
-#![feature(env, path, io)]
+#![feature(env, old_path, old_io)]
 use std::old_io as io;
 
 enum ParserResult {
