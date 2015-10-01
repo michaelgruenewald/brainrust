@@ -55,7 +55,7 @@ impl OpStream {
         }
         for op in &mut self.ops[..] {
             if let &mut Loop(ref mut stream) = op {
-                stream.optimize()
+                stream.optimize();
             }
         }
     }
@@ -90,6 +90,8 @@ impl State {
     fn step(&mut self, op: &Op) {
         match op {
             &Add(i) => {
+                // XXX: Ugly expression due to lexical scoping of borrow,
+                //      cf. https://github.com/rust-lang/rust/issues/6393
                 let x = self.peek();
                 self.poke(x + i);
             }
@@ -171,7 +173,7 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
             },
             _ => Nothing  // other characters
         },
-        _ => EOF
+        _ => EOF  // XXX: really?
     }
 }
 
