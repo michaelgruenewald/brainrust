@@ -5,6 +5,8 @@ use std::io::ReadExt;
 use std::old_io::stdio;
 use std::path::Path;
 
+const MEMSIZE: usize = 4096;
+
 enum ParserResult {
     Something(Op),
     Nothing,
@@ -26,16 +28,20 @@ use Op::*;
 
 struct State {
     index: usize,
-    memory: [u8; 256]
+    memory: [u8; MEMSIZE]
 }
 
 impl State {
+    fn new() -> State {
+        State { index: 0, memory: [0; MEMSIZE] }
+    }
+
     fn peek(&self) -> u8 {
-        self.memory[self.index % 256]
+        self.memory[self.index % MEMSIZE]
     }
 
     fn poke(&mut self, value: u8) {
-        self.memory[self.index % 256] = value;
+        self.memory[self.index % MEMSIZE] = value;
     }
 
     fn step(&mut self, op: &Op) {
@@ -68,7 +74,7 @@ fn main() {
 
     for filename in &filenames[1..] {
         let reader = reader(&Path::new(filename));
-        let mut state = State { index: 0, memory: [0; 256] };
+        let mut state = State::new();
         let mut chars = reader.chars().peekable();
 
         loop {
