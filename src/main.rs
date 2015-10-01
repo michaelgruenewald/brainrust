@@ -135,8 +135,5 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
 }
 
 fn reader(path: &Path) -> io::BufReader<fs::File> {
-    match fs::File::open(path) {
-        Ok(f) => io::BufReader::new(f),
-        Err(e) => panic!(e)
-    }
+    io::BufReader::new(fs::File::open(path).unwrap())
 }
