@@ -15,16 +15,52 @@ enum ParserResult {
 
 use ParserResult::*;
 
-type Ops = Vec<Op>;
+#[derive(Debug)]
 enum Op {
     Add(u8),
     Mov(usize),
     In,
     Out,
-    Loop(Ops)
+    Loop(OpStream)
 }
 
 use Op::*;
+
+#[derive(Debug)]
+struct OpStream {
+    ops: Vec<Op>
+}
+
+impl OpStream {
+    fn add(&mut self, op: Op) {
+        self.ops.push(op);
+    }
+
+    fn optimize(&mut self) {
+        let mut i = 0;
+        while (i + 1) < self.ops.len() {
+            match &vec![&self.ops[i], &self.ops[i+1]][..] {
+                [&Add(a), &Add(b)] => {
+                    self.ops[i] = Add(a + b);
+                    self.ops.remove(i + 1);
+                },
+                [&Mov(a), &Mov(b)] => {
+                    self.ops[i] = Mov(a + b);
+                    self.ops.remove(i + 1);
+                },
+                _ => i += 1
+            }
+        }
+    }
+
+    fn get(&self) -> &[Op] {
+        &self.ops[..]
+    }
+
+    fn new() -> OpStream {
+        OpStream { ops: Vec::new() }
+    }
+}
 
 struct State {
     index: usize,
@@ -56,7 +92,7 @@ impl State {
             },
             &Loop(ref ops) => {
                 while self.peek() != 0 {
-                    self.run(ops);
+                    self.run(ops.get());
                 }
             }
         }
@@ -96,35 +132,18 @@ fn main() {
         let reader = reader(&Path::new(filename));
         let mut chars = reader.chars().peekable();
 
-        let mut ops: Ops = Vec::new();
+        let mut opstream = OpStream::new();
         loop {
             match parse(&mut chars) {
-                Something(op) => ops.push(op),
+                Something(op) => opstream.add(op),
                 EOF => break,
                 _ => {}
             }
         }
 
-        optimize(&mut ops);
+        opstream.optimize();
 
-        State::new().run(&ops);
-    }
-}
-
-fn optimize(ops: &mut Ops) {
-    let mut i = 0;
-    while (i + 1) < ops.len() {
-        match &vec![&ops[i], &ops[i+1]][..] {
-            [&Add(a), &Add(b)] => {
-                ops[i] = Add(a + b);
-                ops.remove(i + 1);
-            },
-            [&Mov(a), &Mov(b)] => {
-                ops[i] = Mov(a + b);
-                ops.remove(i + 1);
-            },
-            _ => i += 1
-        }
+        State::new().run(opstream.get());
     }
 }
 
@@ -138,17 +157,17 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
             ',' => Something(In),
             '.' => Something(Out),
             '[' => {
-                let mut children: Ops = Vec::new();
+                let mut childstream = OpStream::new();
                 while chars.peek() != Some(&Ok(']')) {
                     match parse(&mut chars) {
-                        Something(op) => children.push(op),
+                        Something(op) => childstream.add(op),
                         Nothing => {},
                         EOF => panic!()
                     }
                 }
                 chars.next();
-                optimize(&mut children);
-                Something(Loop(children))
+                childstream.optimize();
+                Something(Loop(childstream))
             },
             _ => Nothing  // other characters
         },
