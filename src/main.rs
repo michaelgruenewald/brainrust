@@ -81,7 +81,7 @@ fn main() {
     }
 }
 
-fn parse(mut chars: &mut std::iter::Peekable<io::Chars<io::BufReader<fs::File>>>) -> ParserResult {
+fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> ParserResult {
     match chars.next() {
         Some(Ok(c)) => match c {
             '+' => Something(Add(1)),
