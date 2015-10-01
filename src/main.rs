@@ -90,14 +90,19 @@ impl State {
 
     fn step(&mut self, op: &Op) {
         match op {
-            &Add(i) => { let x = self.peek(); self.poke(x + i); },
-            &Mov(n) => self.index += n,
+            &Add(i) => {
+                let x = self.peek();
+                self.poke(x + i);
+            }
+            &Mov(n) => {
+                self.index += n
+            }
             &In => {
                 self.poke(stdio::stdin().read_u8().unwrap());
-            },
+            }
             &Out => {
                 stdio::stdout().write_u8(self.peek()).unwrap();
-            },
+            }
             &Loop(ref ops) => {
                 while self.peek() != 0 {
                     self.run(ops.get());
