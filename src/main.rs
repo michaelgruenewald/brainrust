@@ -69,6 +69,8 @@ impl OpStream {
     }
 }
 
+static ZERO: u8 = 0;
+
 struct State {
     index: usize,
     memory: Vec<u8>
@@ -79,44 +81,30 @@ impl State {
         State { index: 0, memory: vec![] }
     }
 
-    fn peek(&self) -> u8 {
-        if self.index >= self.memory.len() {
-            0
-        } else {
-            self.memory[self.index]
-        }
-    }
-
-    fn poke(&mut self, value: u8) {
-        if self.index >= self.memory.len() {
-            self.memory.resize(self.index * 2 + 1, 0);
-        }
-        self.memory[self.index] = value;
+    fn rel_index(&self, relative: isize) -> usize {
+        (self.index as isize + relative) as usize
     }
 
     fn step(&mut self, op: &Op) -> bool {
         match op {
             &Add(i) => {
-                // XXX: Ugly expression due to lexical scoping of borrow,
-                //      cf. https://github.com/rust-lang/rust/issues/6393
-                let x = self.peek();
-                self.poke(x.wrapping_add(i));
+                self[0] = self[0].wrapping_add(i);
             }
             &Mov(n) => {
-                self.index = (self.index as isize + n) as usize;
+                self.index = self.rel_index(n);
             }
             &In => {
                 let mut c = vec![0u8];
                 if io::stdin().read(&mut c).unwrap() == 0 {
                     return false;
                 }
-                self.poke(c[0]);
+                self[0] = c[0];
             }
             &Out => {
-                io::stdout().write(&vec![self.peek()]).unwrap();
+                io::stdout().write(&vec![self[0]]).unwrap();
             }
             &Loop(ref ops) => {
-                while self.peek() != 0 {
+                while self[0] != 0 {
                     if !self.run(ops.get()) {
                         return false;
                     }
@@ -133,6 +121,28 @@ impl State {
             }
         }
         return true;
+    }
+}
+
+impl std::ops::Index<isize> for State {
+    type Output = u8;
+    fn index(&self, _index: isize) -> &u8 {
+        let idx = self.rel_index(_index);
+        if idx >= self.memory.len() {
+            &ZERO
+        } else {
+            &self.memory[idx]
+        }
+    }
+}
+
+impl std::ops::IndexMut<isize> for State {
+    fn index_mut(&mut self, _index: isize) -> &mut u8 {
+        let idx = self.rel_index(_index);
+        if idx >= self.memory.len() {
+            self.memory.resize(idx * 2 + 1, 0);
+        }
+        &mut self.memory[idx]
     }
 }
 
@@ -220,20 +230,20 @@ mod tests {
     );
 
     #[test]
-    fn test_state_peek() {
+    fn test_state_index() {
         let mut state = State { index: 0, memory: vec![23, 0, 0, 0, 0, 42] };
-        assert_eq!(23, state.peek());
+        assert_eq!(23, state[0]);
         state.index = 5;
-        assert_eq!(42, state.peek());
+        assert_eq!(42, state[0]);
     }
 
     #[test]
-    fn test_state_poke() {
+    fn test_state_index_mut() {
         let mut state = State::new();
-        state.poke(23);
+        state[0] = 23;
         assert_eq!(23, state.memory[state.index]);
         state.index = 5;
-        state.poke(42);
+        state[0] = 42;
         assert_eq!(42, state.memory[state.index]);
     }
 
@@ -241,11 +251,11 @@ mod tests {
     fn test_state_step_add() {
         let mut state = State::new();
         state.step(&Add(23));
-        assert_eq!(23, state.peek());
+        assert_eq!(23, state[0]);
         state.step(&Add(42));
-        assert_eq!(65, state.peek());
+        assert_eq!(65, state[0]);
         state.step(&Add(190));
-        assert_eq!(255, state.peek());
+        assert_eq!(255, state[0]);
     }
 
     #[test]
@@ -262,9 +272,9 @@ mod tests {
     #[test]
     fn test_state_step_loop() {
         let mut state = State::new();
-        state.poke(23);
+        state[0] = 23;
         state.step(&Loop(OpStream { ops: vec![Add(1)] }));
-        assert_eq!(0, state.peek());
+        assert_eq!(0, state[0]);
     }
 
     #[test]
