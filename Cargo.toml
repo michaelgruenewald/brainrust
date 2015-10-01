@@ -1,0 +1,5 @@
+[package]
+
+name = "BrainRust"
+version = "0.0.1"
+authors = ["Michael Gruenewald <mail@michaelgruenewald.eu>"]
