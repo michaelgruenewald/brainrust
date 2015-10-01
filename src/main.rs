@@ -342,6 +342,16 @@ mod tests {
     }
 
     #[test]
+    fn test_state_step_transfer() {
+        let mut state = State::new();
+        state[0] = 15;
+        state[1] = 7;
+        state.step(&Transfer(5, vec![(1, 2)]));
+        assert_eq!(0, state[0]);
+        assert_eq!(1, state[1]);
+    }
+
+    #[test]
     fn test_opstream_new_empty() {
         let opstream = OpStream::new();
         assert_eq!(0, opstream.ops.len());
