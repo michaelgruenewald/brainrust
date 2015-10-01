@@ -1,4 +1,4 @@
-#![feature(core, path, io)]
+#![feature(env, path, io)]
 use std::old_io as io;
 
 enum ParserResult {
@@ -55,15 +55,19 @@ impl State {
 }
 
 fn main() {
-    let mut reader = reader(&Path::new("hello.bf"));
-    let mut state = State { index: 0, memory: [0; 256] };
-    let mut chars = reader.chars().peekable();
+    let filenames: Vec<String> = std::iter::FromIterator::from_iter(std::env::args());
 
-    loop {
-        match parse(&mut chars) {
-            Something(op) => state.step(&op),
-            EOF => return,
-            _ => {}
+    for filename in filenames[1..].iter() {
+        let mut reader = reader(&Path::new(filename));
+        let mut state = State { index: 0, memory: [0; 256] };
+        let mut chars = reader.chars().peekable();
+
+        'run: loop {
+            match parse(&mut chars) {
+                Something(op) => state.step(&op),
+                EOF => break'run,
+                _ => {}
+            }
         }
     }
 }
