@@ -1,17 +1,24 @@
 #![feature(core, path, io)]
 use std::old_io as io;
 
-type Ops = Vec<Op>;
+enum ParserResult {
+    Something(Op),
+    Nothing,
+    EOF
+}
 
-#[derive(Debug)]
+use ParserResult::*;
+
+type Ops = Vec<Op>;
 enum Op {
     Add(u8),
     Mov(usize),
-    In,
+    /*In,*/
     Out,
-    Loop(Ops),
-    Noop
+    Loop(Ops)
 }
+
+use Op::*;
 
 struct State {
     index: usize,
@@ -29,22 +36,20 @@ impl State {
 
     fn step(&mut self, op: &Op) {
         match op {
-            &Op::Add(i) => { let x = self.peek(); self.poke(x + i); },
-            &Op::Mov(n) => self.index += n,
-            &Op::Out => print!("{}", std::str::from_utf8(vec![self.peek()].as_slice()).unwrap()),
-            &Op::Loop(ref ops) => {
+            &Add(i) => { let x = self.peek(); self.poke(x + i); },
+            &Mov(n) => self.index += n,
+            &Out => print!("{}", std::str::from_utf8(vec![self.peek()].as_slice()).unwrap()),
+            &Loop(ref ops) => {
                 while self.peek() != 0 {
-                    for op in ops.as_slice() {
-                        self.step(op);
-                    }
+                    self.run(ops);
                 }
-            },
-            _ => {}
+            }
         }
     }
 
-    fn run(&mut self, ops: Ops) {
+    fn run(&mut self, ops: &[Op]) {
         for op in ops {
+            self.step(op);
         }
     }
 }
@@ -56,32 +61,34 @@ fn main() {
 
     loop {
         match parse(&mut chars) {
-            Some(op) => state.step(&op),
-            None => return
+            Something(op) => state.step(&op),
+            EOF => return,
+            _ => {}
         }
     }
 }
 
-fn parse(mut chars: &mut std::iter::Peekable<io::Chars<io::BufferedReader<io::fs::File>>>) -> Option<Op> {
+fn parse(mut chars: &mut std::iter::Peekable<io::Chars<io::BufferedReader<io::fs::File>>>) -> ParserResult {
     match chars.next() {
-        Some(Ok('+')) => Some(Op::Add(1)),
-        Some(Ok('-')) => Some(Op::Add(-1)),
-        Some(Ok('<')) => Some(Op::Mov(-1)),
-        Some(Ok('>')) => Some(Op::Mov(1)),
-        Some(Ok('.')) => Some(Op::Out),
+        Some(Ok('+')) => Something(Add(1)),
+        Some(Ok('-')) => Something(Add(-1)),
+        Some(Ok('<')) => Something(Mov(-1)),
+        Some(Ok('>')) => Something(Mov(1)),
+        Some(Ok('.')) => Something(Out),
         Some(Ok('[')) => {
             let mut children: Ops = Vec::new();
             while !(chars.peek() == Some(&Ok(']'))) {
                 match parse(&mut chars) {
-                    Some(op) => children.push(op),
-                    None => {}
+                    Something(op) => children.push(op),
+                    Nothing => {},
+                    EOF => panic!()
                 }
             }
             chars.next();
-            Some(Op::Loop(children))
+            Something(Loop(children))
         },
-        Some(_) => Some(Op::Noop),
-        _ => None
+        Some(Ok(_)) => Nothing,
+        _ => EOF
     }
 }
 
