@@ -1,4 +1,4 @@
-#![feature(core, io)]
+#![feature(core, io, slice_patterns)]
 use std::fs;
 use std::io;
 use std::io::{Read, Write};
