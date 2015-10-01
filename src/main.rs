@@ -50,12 +50,13 @@ impl OpStream {
                 [Add(0), ..] | [Mov(0), ..] => {
                     self.ops.remove(i);
                 }
+                [Loop(_), ..] => {
+                    if let &mut Loop(ref mut stream) = &mut self.ops[i] {
+                        stream.optimize();
+                    }
+                    i += 1
+                }
                 _ => i += 1
-            }
-        }
-        for op in &mut self.ops[..] {
-            if let &mut Loop(ref mut stream) = op {
-                stream.optimize();
             }
         }
     }
