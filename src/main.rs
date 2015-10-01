@@ -172,7 +172,7 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
             '[' => {
                 let mut childstream = OpStream::new();
                 while match chars.peek() {
-                    Some(&Ok(c)) if c != ']' => true,
+                    Some(&Ok(c)) => c != ']',
                     _ => false
                 } {
                     match parse(&mut chars) {
