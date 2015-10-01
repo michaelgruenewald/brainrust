@@ -51,6 +51,11 @@ impl OpStream {
                 _ => i += 1
             }
         }
+        for op in &mut self.ops[..] {
+            if let &mut Loop(ref mut stream) = op {
+                stream.optimize()
+            }
+        }
     }
 
     fn get(&self) -> &[Op] {
@@ -166,7 +171,6 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
                     }
                 }
                 chars.next();
-                childstream.optimize();
                 Something(Loop(childstream))
             },
             _ => Nothing  // other characters
