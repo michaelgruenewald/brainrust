@@ -1,8 +1,7 @@
-#![feature(env, fs, io, old_io, path)]
+#![feature(io, path)]
 use std::fs;
 use std::io;
-use std::io::ReadExt;
-use std::old_io::stdio;
+use std::io::{Read, ReadExt, Write};
 use std::path::Path;
 
 const MEMSIZE: usize = 4096;
@@ -98,10 +97,12 @@ impl State {
                 self.index += n
             }
             &In => {
-                self.poke(stdio::stdin().read_u8().unwrap());
+                let mut c = vec![0u8];
+                io::stdin().read(&mut c).unwrap();
+                self.poke(c[0]);
             }
             &Out => {
-                stdio::stdout().write_u8(self.peek()).unwrap();
+                io::stdout().write(&vec![self.peek()]).unwrap();
             }
             &Loop(ref ops) => {
                 while self.peek() != 0 {
@@ -123,21 +124,27 @@ fn main() {
     let filenames: Vec<String> = std::iter::FromIterator::from_iter(std::env::args());
 
     for filename in &filenames[1..] {
-        let reader = reader(&Path::new(filename));
-        let mut chars = reader.chars().peekable();
+        match reader(&Path::new(filename)) {
+            Ok(reader) => {
+                let mut chars = reader.chars().peekable();
 
-        let mut opstream = OpStream::new();
-        loop {
-            match parse(&mut chars) {
-                Something(op) => opstream.add(op),
-                EOF => break,
-                _ => {}
+                let mut opstream = OpStream::new();
+                loop {
+                    match parse(&mut chars) {
+                        Something(op) => opstream.add(op),
+                        EOF => break,
+                        _ => {}
+                    }
+                }
+
+                opstream.optimize();
+
+                State::new().run(opstream.get());
+            }
+            Err(e) => {
+                writeln!(&mut io::stderr(), "Error while processing {}: {}", filename, e).unwrap();
             }
         }
-
-        opstream.optimize();
-
-        State::new().run(opstream.get());
     }
 }
 
@@ -168,8 +175,8 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
     }
 }
 
-fn reader(path: &Path) -> io::BufReader<fs::File> {
-    io::BufReader::new(fs::File::open(path).unwrap())
+fn reader(path: &Path) -> Result<io::BufReader<fs::File>, io::Error> {
+    Ok(io::BufReader::new(try!(fs::File::open(path))))
 }
 
 #[cfg(test)]
