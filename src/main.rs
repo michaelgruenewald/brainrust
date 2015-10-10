@@ -135,14 +135,14 @@ impl State {
                 self.index = self.rel_index(n);
             }
             &In => {
-                let mut c = vec![0u8];
+                let mut c = [0u8];
                 if io::stdin().read(&mut c).unwrap() == 0 {
                     return false;
                 }
                 self[0] = c[0];
             }
             &Out => {
-                io::stdout().write(&vec![self[0]]).unwrap();
+                io::stdout().write(&[self[0]]).unwrap();
             }
             &Loop(ref ops) => {
                 while self[0] != 0 {
