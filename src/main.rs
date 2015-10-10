@@ -254,10 +254,8 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
                     Some(&Ok(c)) => c != ']',
                     _ => panic!("Unterminated loop")
                 } {
-                    match parse(&mut chars) {
-                        Something(op) => childstream.add(op),
-                        Nothing => {},
-                        EOF => panic!()
+                    if let Something(op) = parse(&mut chars) {
+                        childstream.add(op)
                     }
                 }
                 chars.next();
