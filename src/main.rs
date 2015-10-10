@@ -96,10 +96,7 @@ impl OpStream {
             return None;
         }
 
-        match map.remove(&0) {
-            Some(summand) => Some(Transfer(summand, map.into_iter().collect())),
-            None => None
-        }
+        map.remove(&0).map(|summand| Transfer(summand, map.into_iter().collect()))
     }
 
     fn get(&self) -> &[Op] {
