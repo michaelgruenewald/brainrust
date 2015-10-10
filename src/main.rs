@@ -4,6 +4,7 @@ use std::fs;
 use std::io;
 use std::io::{Read, Write};
 use std::path::Path;
+use std::thread;
 
 #[derive(Debug)]
 enum ParserResult {
@@ -161,6 +162,12 @@ impl State {
 
                 while _v != 0 {
                     _v = _v.wrapping_add(d);
+                    if _v == self[0] {
+                        // stalled: the current transfer will never complete
+                        loop {
+                            thread::park()
+                        }
+                    }
                     _n += 1
                 }
 
