@@ -7,15 +7,6 @@ use std::path::Path;
 use std::thread;
 
 #[derive(Debug)]
-enum ParserResult {
-    Something(Op),
-    Nothing,
-    EOF
-}
-
-use ParserResult::*;
-
-#[derive(Debug)]
 enum Op {
     Add(u8),
     Mov(isize),
@@ -216,15 +207,11 @@ fn main() {
     for filename in &filenames[1..] {
         match reader(&Path::new(filename)) {
             Ok(reader) => {
-                let mut chars = reader.chars().peekable();
+                let mut chars = reader.chars();
 
                 let mut opstream = OpStream::new();
-                loop {
-                    match parse(&mut chars) {
-                        Something(op) => opstream.add(op),
-                        EOF => break,
-                        _ => {}
-                    }
+                while let Some(op) = parse(&mut chars, false) {
+                    opstream.add(op);
                 }
 
                 opstream.optimize();
@@ -238,31 +225,41 @@ fn main() {
     }
 }
 
-fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> ParserResult {
-    match chars.next() {
-        Some(Ok(c)) => match c {
-            '+' => Something(Add(0x01)),
-            '-' => Something(Add(0xff)),
-            '<' => Something(Mov(-1)),
-            '>' => Something(Mov(1)),
-            ',' => Something(In),
-            '.' => Something(Out),
-            '[' => {
-                let mut childstream = OpStream::new();
-                while match chars.peek() {
-                    Some(&Ok(c)) => c != ']',
-                    _ => panic!("Unterminated loop")
-                } {
-                    if let Something(op) = parse(&mut chars) {
-                        childstream.add(op)
+fn parse<T: io::Read>(mut chars: &mut io::Chars<T>, in_a_loop: bool) -> Option<Op> {
+    loop {
+        return match chars.next() {
+            Some(Ok(c)) => match c {
+                '+' => Some(Add(0x01)),
+                '-' => Some(Add(0xff)),
+                '<' => Some(Mov(-1)),
+                '>' => Some(Mov(1)),
+                ',' => Some(In),
+                '.' => Some(Out),
+                '[' => {
+                    let mut childstream = OpStream::new();
+                    while let Some(op) = parse(&mut chars, true) {
+                        childstream.add(op);
+                    }
+                    Some(Loop(childstream))
+                }
+                ']' => {
+                    if in_a_loop {
+                        None
+                    } else {
+                        panic!("Stray loop terminator")
                     }
                 }
-                chars.next();
-                Something(Loop(childstream))
+                _ => continue
             },
-            _ => Nothing  // other characters
-        },
-        _ => EOF  // XXX: really?
+            Some(e @ Err(_)) => panic!("{:?}", e),
+            None => {
+                if in_a_loop {
+                    panic!("EOF within a loop")
+                } else {
+                    None
+                }
+            }
+        }
     }
 }
 
@@ -274,7 +271,7 @@ fn reader(path: &Path) -> Result<io::BufReader<fs::File>, io::Error> {
 mod tests {
     use std::io;
     use std::io::Read;
-    use super::{parse, ParserResult, State, OpStream};
+    use super::{parse, State, OpStream};
     use super::Op::*;
 
     macro_rules! assert_let(
@@ -378,12 +375,12 @@ mod tests {
     #[test]
     fn test_parse() {
         let input = b"+-[+.,]+";
-        let mut chars = io::BufReader::new(&input[..]).chars().peekable();
-        assert_let!(ParserResult::Something(Add(0x01)), parse(&mut chars));
-        assert_let!(ParserResult::Something(Add(0xff)), parse(&mut chars));
-        assert_let!(ParserResult::Something(Loop(loop_op)), parse(&mut chars), {
+        let mut chars = io::BufReader::new(&input[..]).chars();
+        assert_let!(Some(Add(0x01)), parse(&mut chars, false));
+        assert_let!(Some(Add(0xff)), parse(&mut chars, false));
+        assert_let!(Some(Loop(loop_op)), parse(&mut chars, false), {
             assert_let!([Add(1), Out, In], &loop_op.ops[..]);
         });
-        assert_let!(ParserResult::Something(Add(1)), parse(&mut chars));
+        assert_let!(Some(Add(1)), parse(&mut chars, false));
     }
 }
