@@ -270,7 +270,7 @@ fn parse<T: io::Read>(mut chars: &mut std::iter::Peekable<io::Chars<T>>) -> Pars
 }
 
 fn reader(path: &Path) -> Result<io::BufReader<fs::File>, io::Error> {
-    Ok(io::BufReader::new(try!(fs::File::open(path))))
+    fs::File::open(path).map(|f| io::BufReader::new(f))
 }
 
 #[cfg(test)]
