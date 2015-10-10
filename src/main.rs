@@ -152,26 +152,21 @@ impl State {
                 }
             }
             &Transfer(d, ref map) => {
-                let n = match (self[0], d) {
-                    (0, _) => 0,
-                    (x, 0xff) => x,
-                    (x, 0x01) => 0u8.wrapping_sub(x),
-                    (x, _) => {
-                        let mut _v = x;
-                        let mut _n = 0;
-                        while _v != 0 {
-                            _v = _v.wrapping_add(d);
-                            _n += 1
-                        }
-                        _n
-                    }
-                };
+                if self[0] == 0 {
+                    return true
+                }
 
-                if n > 0 {
-                    self[0] = 0;
-                    for &(k, v) in &map[..] {
-                        self[k] = self[k].wrapping_add(v.wrapping_mul(n));
-                    }
+                let mut _v = self[0];
+                let mut _n = 0;
+
+                while _v != 0 {
+                    _v = _v.wrapping_add(d);
+                    _n += 1
+                }
+
+                self[0] = 0;
+                for &(k, v) in &map[..] {
+                    self[k] = self[k].wrapping_add(v.wrapping_mul(_n));
                 }
             }
         }
