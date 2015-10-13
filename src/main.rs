@@ -209,8 +209,8 @@ fn main() {
         }).map_err(|e| format!("{}", e)).and_then(|buffer| {
             match bf_parse_file(&buffer[..]) {
                 IResult::Done(_, o) => Ok(o),
-                IResult::Error(e) => Err(format!("{:?}", e)),
-                IResult::Incomplete(m) => Err(format!("{:?}", m)),
+                IResult::Error(e) => Err(format!("Parsing error: {:?}", e)),
+                IResult::Incomplete(m) => Err(format!("Incomplete file: {:?}", m)),
             }
         }) {
             Ok(ops) => {
