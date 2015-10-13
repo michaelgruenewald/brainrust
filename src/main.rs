@@ -1,4 +1,8 @@
-#![feature(io, slice_patterns, vec_resize)]
+#![feature(slice_patterns, vec_resize)]
+#[macro_use]
+extern crate nom;
+
+use nom::{IResult, eof};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
@@ -203,68 +207,49 @@ impl std::ops::IndexMut<isize> for State {
     }
 }
 
-
 fn main() {
     let filenames: Vec<String> = std::iter::FromIterator::from_iter(std::env::args());
 
     for filename in &filenames[1..] {
-        match reader(&Path::new(filename)) {
-            Ok(reader) => {
-                let mut chars = reader.chars();
-
-                let mut opstream = OpStream::new();
-                while let Some(op) = parse(&mut chars, false) {
-                    opstream.add(op);
-                }
-
+        match reader(&Path::new(filename)).and_then(|mut reader| {
+            let mut buffer = Vec::new();
+            reader.read_to_end(&mut buffer).map(|_| buffer)
+        }).map_err(|e| format!("{}", e)).and_then(|buffer| {
+            match bf_parse_file(&buffer[..]) {
+                IResult::Done(_, o) => Ok(o),
+                IResult::Error(e) => Err(format!("{:?}", e)),
+                IResult::Incomplete(m) => Err(format!("{:?}", m)),
+            }
+        }) {
+            Ok(ops) => {
+                let mut opstream = OpStream { ops: ops };
                 opstream.optimize();
-
                 State::new().run(opstream.get());
             }
             Err(e) => {
                 writeln!(&mut io::stderr(), "Error while processing {}: {}", filename, e).unwrap();
             }
-        }
+        };
     }
 }
 
-fn parse<T: io::Read>(mut chars: &mut io::Chars<T>, in_a_loop: bool) -> Option<Op> {
-    loop {
-        return match chars.next() {
-            Some(Ok(c)) => match c {
-                '+' => Some(Add(0x01)),
-                '-' => Some(Add(0xff)),
-                '<' => Some(Mov(-1)),
-                '>' => Some(Mov(1)),
-                ',' => Some(In),
-                '.' => Some(Out),
-                '[' => {
-                    let mut childstream = OpStream::new();
-                    while let Some(op) = parse(&mut chars, true) {
-                        childstream.add(op);
-                    }
-                    Some(Loop(childstream))
-                }
-                ']' => {
-                    if in_a_loop {
-                        None
-                    } else {
-                        panic!("Stray loop terminator")
-                    }
-                }
-                _ => continue
-            },
-            Some(e @ Err(_)) => panic!("{:?}", e),
-            None => {
-                if in_a_loop {
-                    panic!("EOF within a loop")
-                } else {
-                    None
-                }
-            }
-        }
-    }
-}
+named!(bf_parse_file<&[u8], Vec<Op> >, chain!(ops: bf_parse ~ eof, || ops));
+named!(bf_parse<&[u8], Vec<Op> >,
+    many0!(
+        chain!(
+            opt!(is_not!("+-<>.,[]")) ~
+            op: alt!(
+                chain!(tag!("+"), || Add(0x01)) |
+                chain!(tag!("-"), || Add(0xff)) |
+                chain!(tag!(">"), || Mov(1)) |
+                chain!(tag!("<"), || Mov(-1)) |
+                chain!(tag!("."), || Out) |
+                chain!(tag!(","), || In) |
+                chain!(subops: delimited!(tag!("["), bf_parse, tag!("]")), || Loop(OpStream { ops: subops }))
+            ) ~
+            opt!(is_not!("+-<>.,[]")), || op)
+        )
+    );
 
 fn reader(path: &Path) -> Result<io::BufReader<fs::File>, io::Error> {
     fs::File::open(path).map(|f| io::BufReader::new(f))
@@ -272,9 +257,8 @@ fn reader(path: &Path) -> Result<io::BufReader<fs::File>, io::Error> {
 
 #[cfg(test)]
 mod tests {
-    use std::io;
-    use std::io::Read;
-    use super::{parse, State, OpStream};
+    use nom::IResult::Done;
+    use super::{bf_parse_file, State, OpStream};
     use super::Op::*;
 
     macro_rules! assert_let(
@@ -394,12 +378,10 @@ mod tests {
     #[test]
     fn test_parse() {
         let input = b"+-[+.,]+";
-        let mut chars = io::BufReader::new(&input[..]).chars();
-        assert_let!(Some(Add(0x01)), parse(&mut chars, false));
-        assert_let!(Some(Add(0xff)), parse(&mut chars, false));
-        assert_let!(Some(Loop(loop_op)), parse(&mut chars, false), {
-            assert_let!([Add(1), Out, In], &loop_op.ops[..]);
+        assert_let!(Done(_, v), bf_parse_file(&input[..]), {
+            assert_let!([Add(0x01), Add(0xff), Loop(ref loop_op), Add(0x01)], &v[..], {
+                assert_let!([Add(1), Out, In], &loop_op.ops[..]);
+            });
         });
-        assert_let!(Some(Add(1)), parse(&mut chars, false));
     }
 }
