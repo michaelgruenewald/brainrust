@@ -30,10 +30,6 @@ struct OpStream {
 }
 
 impl OpStream {
-    fn add(&mut self, op: Op) {
-        self.ops.push(op);
-    }
-
     fn optimize(&mut self) {
         let mut i = 0;
         while i < self.ops.len() {
@@ -99,10 +95,6 @@ impl OpStream {
 
     fn get(&self) -> &[Op] {
         &self.ops[..]
-    }
-
-    fn new() -> OpStream {
-        OpStream { ops: Vec::new() }
     }
 }
 
@@ -333,25 +325,20 @@ mod tests {
     }
 
     #[test]
-    fn test_opstream_new_empty() {
-        let opstream = OpStream::new();
-        assert_eq!(0, opstream.ops.len());
-    }
-
-    #[test]
     fn test_opstream_optimize() {
-        let mut opstream = OpStream::new();
-        opstream.add(Mov(1));
-        opstream.add(Mov(1));
-        opstream.add(Add(0x01));
-        opstream.add(Add(0xff));
-        opstream.add(Add(0xff));
-        opstream.add(Mov(1));
-        opstream.add(Mov(-1));
-        let mut opstream2 = OpStream::new();
-        opstream2.add(Mov(2));
-        opstream2.add(Mov(3));
-        opstream.add(Loop(opstream2));
+        let mut opstream = OpStream { ops: vec![
+            Mov(1),
+            Mov(1),
+            Add(0x01),
+            Add(0x0ff),
+            Add(0x0ff),
+            Mov(1),
+            Mov(-1),
+            Loop(OpStream { ops: vec![
+                Mov(2),
+                Mov(3)
+            ] })
+        ] };
         opstream.optimize();
 
         assert_let!([Mov(2), Add(0xff), Loop(ref s2)], &opstream.ops[..], {
@@ -361,13 +348,14 @@ mod tests {
 
     #[test]
     fn test_opstream_optimize_transfer() {
-        let mut opstream2 = OpStream::new();
-        opstream2.add(Add(0x01));
-        opstream2.add(Mov(3));
-        opstream2.add(Add(0xff));
-        opstream2.add(Mov(-3));
-        let mut opstream = OpStream::new();
-        opstream.add(Loop(opstream2));
+        let mut opstream = OpStream { ops: vec![
+            Loop(OpStream { ops: vec![
+                Add(0x01),
+                Mov(3),
+                Add(0xff),
+                Mov(-3)
+            ] })
+        ] };
         opstream.optimize();
 
         assert_let!([Transfer(1, ref v)], &opstream.ops[..], {
