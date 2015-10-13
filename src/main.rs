@@ -44,6 +44,9 @@ impl OpStream {
                 }
                 [Add(0), ..] | [Mov(0), ..] => {
                     self.ops.remove(i);
+                    if i > 0 {
+                        i -= 1;
+                    }
                 }
                 [Loop(_), ..] => {
                     let mut maybe_new_op = None;
