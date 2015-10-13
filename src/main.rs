@@ -90,7 +90,7 @@ impl OpStream {
             return None;
         }
 
-        map.remove(&0).map(|summand| Transfer(summand, map.into_iter().collect()))
+        Some(Transfer(map.remove(&0).unwrap_or(0), map.into_iter().collect()))
     }
 
     fn get(&self) -> &[Op] {
