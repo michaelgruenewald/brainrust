@@ -376,6 +376,22 @@ mod tests {
     }
 
     #[test]
+    fn test_opstream_optimize_transfer() {
+        let mut opstream2 = OpStream::new();
+        opstream2.add(Add(0x01));
+        opstream2.add(Mov(3));
+        opstream2.add(Add(0xff));
+        opstream2.add(Mov(-3));
+        let mut opstream = OpStream::new();
+        opstream.add(Loop(opstream2));
+        opstream.optimize();
+
+        assert_let!([Transfer(1, ref v)], &opstream.ops[..], {
+            assert_let!([(3, 255)], &v[..]);
+        });
+    }
+
+    #[test]
     fn test_parse() {
         let input = b"+-[+.,]+";
         let mut chars = io::BufReader::new(&input[..]).chars();
