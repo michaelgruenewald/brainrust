@@ -119,31 +119,31 @@ impl State {
     }
 
     fn step(&mut self, op: &Op) -> bool {
-        match op {
-            &Add(i) => {
+        match *op {
+            Add(i) => {
                 self[0] = self[0].wrapping_add(i);
             }
-            &Mov(n) => {
+            Mov(n) => {
                 self.index = self.rel_index(n);
             }
-            &In => {
+            In => {
                 let mut c = [0u8];
                 if io::stdin().read(&mut c).unwrap() == 0 {
                     return false;
                 }
                 self[0] = c[0];
             }
-            &Out => {
+            Out => {
                 io::stdout().write(&[self[0]]).unwrap();
             }
-            &Loop(ref ops) => {
+            Loop(ref ops) => {
                 while self[0] != 0 {
                     if !self.run(ops.get()) {
                         return false;
                     }
                 }
             }
-            &Transfer(d, ref map) => {
+            Transfer(d, ref map) => {
                 if self[0] == 0 {
                     return true
                 }
