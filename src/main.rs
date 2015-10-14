@@ -21,7 +21,7 @@ enum Op {
     Loop(OpStream),
 
     // extra optimized ops
-    Transfer(u8, Vec<(isize, u8)>)
+    Transfer(u8, Vec<(isize, u8)>),
 }
 
 use Op::*;
@@ -30,7 +30,7 @@ use Op::*;
 #[derive(PartialEq)]
 #[derive(Eq)]
 struct OpStream {
-    ops: Vec<Op>
+    ops: Vec<Op>,
 }
 
 impl OpStream {
@@ -66,7 +66,7 @@ impl OpStream {
 
                     i += 1
                 }
-                _ => i += 1
+                _ => i += 1,
             }
         }
     }
@@ -106,12 +106,15 @@ static ZERO: u8 = 0;
 
 struct State {
     index: usize,
-    memory: Vec<u8>
+    memory: Vec<u8>,
 }
 
 impl State {
     fn new() -> State {
-        State { index: 0, memory: vec![] }
+        State {
+            index: 0,
+            memory: vec![],
+        }
     }
 
     fn rel_index(&self, relative: isize) -> usize {
@@ -207,23 +210,30 @@ fn main() {
     let filenames: Vec<String> = std::iter::FromIterator::from_iter(std::env::args());
 
     for filename in &filenames[1..] {
-        match reader(&Path::new(filename)).and_then(|mut reader| {
-            let mut buffer = Vec::new();
-            reader.read_to_end(&mut buffer).map(|_| buffer)
-        }).map_err(|e| format!("{}", e)).and_then(|buffer| {
-            match bf_parse_file(&buffer[..]) {
-                IResult::Done(_, o) => Ok(o),
-                IResult::Error(e) => Err(format!("Parsing error: {:?}", e)),
-                IResult::Incomplete(m) => Err(format!("Incomplete file: {:?}", m)),
-            }
-        }) {
+        match reader(&Path::new(filename))
+                  .and_then(|mut reader| {
+                      let mut buffer = Vec::new();
+                      reader.read_to_end(&mut buffer).map(|_| buffer)
+                  })
+                  .map_err(|e| format!("{}", e))
+                  .and_then(|buffer| {
+                      match bf_parse_file(&buffer[..]) {
+                          IResult::Done(_, o) => Ok(o),
+                          IResult::Error(e) => Err(format!("Parsing error: {:?}", e)),
+                          IResult::Incomplete(m) => Err(format!("Incomplete file: {:?}", m)),
+                      }
+                  }) {
             Ok(ops) => {
                 let mut opstream = OpStream { ops: ops };
                 opstream.optimize();
                 State::new().run(opstream.get());
             }
             Err(e) => {
-                writeln!(&mut io::stderr(), "Error while processing {}: {}", filename, e).unwrap();
+                writeln!(&mut io::stderr(),
+                         "Error while processing {}: {}",
+                         filename,
+                         e)
+                    .unwrap();
             }
         };
     }
@@ -259,7 +269,10 @@ mod tests {
 
     #[test]
     fn test_state_index() {
-        let mut state = State { index: 0, memory: vec![23, 0, 0, 0, 0, 42] };
+        let mut state = State {
+            index: 0,
+            memory: vec![23, 0, 0, 0, 0, 42],
+        };
         assert_eq!(23, state[0]);
         state.index = 5;
         assert_eq!(42, state[0]);
@@ -317,49 +330,41 @@ mod tests {
 
     #[test]
     fn test_opstream_optimize() {
-        let mut opstream = OpStream { ops: vec![
-            Mov(1),
-            Mov(1),
-            Add(0x01),
-            Add(0x0ff),
-            Add(0x0ff),
-            Mov(1),
-            Mov(-1),
-            Loop(OpStream { ops: vec![
-                Mov(2),
-                Mov(3)
-            ] })
-        ] };
+        let mut opstream = OpStream {
+            ops: vec![Mov(1),
+                      Mov(1),
+                      Add(0x01),
+                      Add(0x0ff),
+                      Add(0x0ff),
+                      Mov(1),
+                      Mov(-1),
+                      Loop(OpStream { ops: vec![Mov(2), Mov(3)] })],
+        };
         opstream.optimize();
 
-        assert_eq!(opstream, OpStream { ops: vec![Mov(2), Add(0xff), Loop(OpStream { ops: vec![Mov(5)] } )] });
+        assert_eq!(opstream,
+                   OpStream { ops: vec![Mov(2), Add(0xff), Loop(OpStream { ops: vec![Mov(5)] })] });
     }
 
     #[test]
     fn test_opstream_optimize_transfer() {
-        let mut opstream = OpStream { ops: vec![
-            Loop(OpStream { ops: vec![
-                Add(0x01),
-                Mov(3),
-                Add(0xff),
-                Mov(-3)
-            ] })
-        ] };
+        let mut opstream = OpStream {
+            ops: vec![Loop(OpStream { ops: vec![Add(0x01), Mov(3), Add(0xff), Mov(-3)] })],
+        };
         opstream.optimize();
 
-        assert_eq!(opstream, OpStream { ops: vec![Transfer(1, vec![(3, 255)])] } );
+        assert_eq!(opstream,
+                   OpStream { ops: vec![Transfer(1, vec![(3, 255)])] });
     }
 
     #[test]
     fn test_parse() {
         let input = b"+-[+.,]+";
-        assert_eq!(
-            bf_parse_file(&input[..]),
-            Done(&b""[..],
-                vec![Add(0x01), Add(0xff), Loop(
-                    OpStream { ops: vec![Add(1), Out, In] }
-                ), Add(0x01)]
-            )
-        );
+        assert_eq!(bf_parse_file(&input[..]),
+                   Done(&b""[..],
+                        vec![Add(0x01),
+                             Add(0xff),
+                             Loop(OpStream { ops: vec![Add(1), Out, In] }),
+                             Add(0x01)]));
     }
 }
