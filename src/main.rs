@@ -11,6 +11,8 @@ use std::path::Path;
 use std::thread;
 
 #[derive(Debug)]
+#[derive(PartialEq)]
+#[derive(Eq)]
 enum Op {
     Add(u8),
     Mov(isize),
@@ -25,6 +27,8 @@ enum Op {
 use Op::*;
 
 #[derive(Debug)]
+#[derive(PartialEq)]
+#[derive(Eq)]
 struct OpStream {
     ops: Vec<Op>
 }
@@ -253,19 +257,6 @@ mod tests {
     use super::{bf_parse_file, State, OpStream};
     use super::Op::*;
 
-    macro_rules! assert_let(
-        ($test:pat, $value:expr, $then:block) => (
-            if let $test = $value {
-                $then
-            } else {
-                panic!("{:?} doesn't match {}", $value, stringify!($test))
-            }
-        );
-        ($test:pat, $value:expr) => (
-            assert_let!($test, $value, {})
-        );
-    );
-
     #[test]
     fn test_state_index() {
         let mut state = State { index: 0, memory: vec![23, 0, 0, 0, 0, 42] };
@@ -341,9 +332,7 @@ mod tests {
         ] };
         opstream.optimize();
 
-        assert_let!([Mov(2), Add(0xff), Loop(ref s2)], &opstream.ops[..], {
-            assert_let!([Mov(5)], &s2.ops[..]);
-        });
+        assert_eq!(opstream, OpStream { ops: vec![Mov(2), Add(0xff), Loop(OpStream { ops: vec![Mov(5)] } )] });
     }
 
     #[test]
@@ -358,18 +347,19 @@ mod tests {
         ] };
         opstream.optimize();
 
-        assert_let!([Transfer(1, ref v)], &opstream.ops[..], {
-            assert_let!([(3, 255)], &v[..]);
-        });
+        assert_eq!(opstream, OpStream { ops: vec![Transfer(1, vec![(3, 255)])] } );
     }
 
     #[test]
     fn test_parse() {
         let input = b"+-[+.,]+";
-        assert_let!(Done(_, v), bf_parse_file(&input[..]), {
-            assert_let!([Add(0x01), Add(0xff), Loop(ref loop_op), Add(0x01)], &v[..], {
-                assert_let!([Add(1), Out, In], &loop_op.ops[..]);
-            });
-        });
+        assert_eq!(
+            bf_parse_file(&input[..]),
+            Done(&b""[..],
+                vec![Add(0x01), Add(0xff), Loop(
+                    OpStream { ops: vec![Add(1), Out, In] }
+                ), Add(0x01)]
+            )
+        );
     }
 }
