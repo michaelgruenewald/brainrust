@@ -147,7 +147,7 @@ impl State {
             }
             Transfer(d, ref map) => {
                 if self[0] == 0 {
-                    return true
+                    return true;
                 }
 
                 let mut _v = self[0];
@@ -235,7 +235,7 @@ fn main() {
                          e)
                     .unwrap();
             }
-        };
+        }
     }
 }
 
