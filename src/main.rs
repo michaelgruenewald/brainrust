@@ -7,7 +7,6 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::io::{Read, Write};
-use std::path::Path;
 use std::thread;
 
 #[derive(Debug)]
@@ -210,7 +209,8 @@ fn main() {
     let filenames: Vec<String> = std::iter::FromIterator::from_iter(std::env::args());
 
     for filename in &filenames[1..] {
-        match reader(&Path::new(filename))
+        match fs::File::open(filename)
+                  .map(|f| io::BufReader::new(f))
                   .and_then(|mut reader| {
                       let mut buffer = Vec::new();
                       reader.read_to_end(&mut buffer).map(|_| buffer)
@@ -256,10 +256,6 @@ named!(bf_parse<&[u8], Vec<Op> >,
             opt!(is_not!("+-<>.,[]")), || op)
         )
     );
-
-fn reader(path: &Path) -> Result<io::BufReader<fs::File>, io::Error> {
-    fs::File::open(path).map(|f| io::BufReader::new(f))
-}
 
 #[cfg(test)]
 mod tests {
