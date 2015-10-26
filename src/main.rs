@@ -1,4 +1,4 @@
-#![feature(slice_patterns, vec_resize)]
+#![feature(slice_patterns)]
 #[macro_use]
 extern crate nom;
 
