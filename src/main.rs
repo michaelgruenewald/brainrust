@@ -235,6 +235,8 @@ fn main() {
 fn parse(text: &[u8]) -> Result<Vec<Op>, String> {
     let mut stack = vec![];
     let mut current = vec![];
+    let mut line = 1;
+    let mut column = 1;
 
     for c in text {
         match *c as char {
@@ -252,15 +254,21 @@ fn parse(text: &[u8]) -> Result<Vec<Op>, String> {
                 let opstream = OpStream { ops: current };
                 current = match stack.pop() {
                     Some(v) => v,
-                    None => return Err("Stray ]".to_string()),
+                    None => return Err(format!("Stray ] in line {}, column {}", line, column))
                 };
                 current.push(Loop(opstream));
             }
             _ => {}
         }
+        if *c as char == '\n' {
+            line += 1;
+            column = 1;
+        } else {
+            column += 1;
+        }
     }
     if !stack.is_empty() {
-        return Err("Missing ]".to_string());
+        return Err(format!("Missing ] in line {}, column {}", line, column));
     }
     Ok(current)
 }
