@@ -1,8 +1,5 @@
 #![feature(slice_patterns)]
-#[macro_use]
-extern crate nom;
 
-use nom::{IResult, eof};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
@@ -218,13 +215,7 @@ fn main() {
                       reader.read_to_end(&mut buffer).map(|_| buffer)
                   })
                   .map_err(|e| format!("{}", e))
-                  .and_then(|buffer| {
-                      match bf_parse_file(&buffer[..]) {
-                          IResult::Done(_, o) => Ok(o),
-                          IResult::Error(e) => Err(format!("Parsing error: {:?}", e)),
-                          IResult::Incomplete(m) => Err(format!("Incomplete file: {:?}", m)),
-                      }
-                  }) {
+                  .and_then(|buffer| parse(&buffer[..])) {
             Ok(ops) => {
                 let mut opstream = OpStream { ops: ops };
                 opstream.optimize();
@@ -241,28 +232,42 @@ fn main() {
     }
 }
 
-named!(bf_parse_file<&[u8], Vec<Op> >, chain!(ops: bf_parse ~ eof, || ops));
-named!(bf_parse<&[u8], Vec<Op> >,
-    many0!(
-        chain!(
-            opt!(is_not!("+-<>.,[]")) ~
-            op: alt!(
-                chain!(tag!("+"), || Add(0x01)) |
-                chain!(tag!("-"), || Add(0xff)) |
-                chain!(tag!(">"), || Mov(1)) |
-                chain!(tag!("<"), || Mov(-1)) |
-                chain!(tag!("."), || Out) |
-                chain!(tag!(","), || In) |
-                chain!(subops: delimited!(tag!("["), bf_parse, tag!("]")), || Loop(OpStream { ops: subops }))
-            ) ~
-            opt!(is_not!("+-<>.,[]")), || op)
-        )
-    );
+fn parse(text: &[u8]) -> Result<Vec<Op>, String> {
+    let mut stack = vec![];
+    let mut current = vec![];
+
+    for c in text {
+        match *c as char {
+            '+' => current.push(Add(0x01)),
+            '-' => current.push(Add(0xff)),
+            '>' => current.push(Mov(1)),
+            '<' => current.push(Mov(-1)),
+            '.' => current.push(Out),
+            ',' => current.push(In),
+            '[' => {
+                stack.push(current);
+                current = vec![];
+            }
+            ']' => {
+                let opstream = OpStream { ops: current };
+                current = match stack.pop() {
+                    Some(v) => v,
+                    None => return Err("Stray ]".to_string()),
+                };
+                current.push(Loop(opstream));
+            }
+            _ => {}
+        }
+    }
+    if !stack.is_empty() {
+        return Err("Missing ]".to_string());
+    }
+    Ok(current)
+}
 
 #[cfg(test)]
 mod tests {
-    use nom::IResult::Done;
-    use super::{bf_parse_file, State, OpStream};
+    use super::{parse, State, OpStream};
     use super::Op::*;
 
     #[test]
@@ -358,11 +363,10 @@ mod tests {
     #[test]
     fn test_parse() {
         let input = b"+-[+.,]+";
-        assert_eq!(bf_parse_file(&input[..]),
-                   Done(&b""[..],
-                        vec![Add(0x01),
-                             Add(0xff),
-                             Loop(OpStream { ops: vec![Add(1), Out, In] }),
-                             Add(0x01)]));
+        assert_eq!(parse(&input[..]),
+                   Ok(vec![Add(0x01),
+                           Add(0xff),
+                           Loop(OpStream { ops: vec![Add(1), Out, In] }),
+                           Add(0x01)]));
     }
 }
