@@ -254,7 +254,7 @@ fn parse(text: &[u8]) -> Result<Vec<Op>, String> {
                 let opstream = OpStream { ops: current };
                 current = match stack.pop() {
                     Some(v) => v,
-                    None => return Err(format!("Stray ] in line {}, column {}", line, column))
+                    None => return Err(format!("Stray ] in line {}, column {}", line, column)),
                 };
                 current.push(Loop(opstream));
             }
@@ -376,5 +376,19 @@ mod tests {
                            Add(0xff),
                            Loop(OpStream { ops: vec![Add(1), Out, In] }),
                            Add(0x01)]));
+    }
+
+    #[test]
+    fn test_parse_stray() {
+        let input = include_bytes!("../test_cases/stray.bf");
+        assert_eq!(parse(&input[..]),
+                   Err("Stray ] in line 3, column 3".to_string()));
+    }
+
+    #[test]
+    fn test_parse_incomplete() {
+        let input = include_bytes!("../test_cases/incomplete.bf");
+        assert_eq!(parse(&input[..]),
+                   Err("Missing ] in line 4, column 1".to_string()));
     }
 }
