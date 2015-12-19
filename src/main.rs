@@ -52,11 +52,13 @@ impl OpStream {
                     }
                 }
                 [Loop(_), ..] => {
-                    let mut maybe_new_op = None;
+                    let maybe_new_op;
 
                     if let &mut Loop(ref mut stream) = &mut self.ops[i] {
                         stream.optimize();
                         maybe_new_op = stream.find_alternative();
+                    } else {
+                        unreachable!()
                     }
 
                     if let Some(new_op) = maybe_new_op {
