@@ -239,18 +239,18 @@ fn parse(text: &[u8]) -> Result<Vec<Op>, String> {
     let mut column = 1;
 
     for c in text {
-        match *c as char {
-            '+' => current.push(Add(0x01)),
-            '-' => current.push(Add(0xff)),
-            '>' => current.push(Mov(1)),
-            '<' => current.push(Mov(-1)),
-            '.' => current.push(Out),
-            ',' => current.push(In),
-            '[' => {
+        match *c {
+            b'+' => current.push(Add(0x01)),
+            b'-' => current.push(Add(0xff)),
+            b'>' => current.push(Mov(1)),
+            b'<' => current.push(Mov(-1)),
+            b'.' => current.push(Out),
+            b',' => current.push(In),
+            b'[' => {
                 stack.push(current);
                 current = vec![];
             }
-            ']' => {
+            b']' => {
                 let opstream = OpStream { ops: current };
                 current = match stack.pop() {
                     Some(v) => v,
@@ -260,7 +260,7 @@ fn parse(text: &[u8]) -> Result<Vec<Op>, String> {
             }
             _ => {}
         }
-        if *c as char == '\n' {
+        if *c == b'\n' {
             line += 1;
             column = 1;
         } else {
