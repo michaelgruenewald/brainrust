@@ -1,10 +1,14 @@
 #![feature(slice_patterns)]
 
+extern crate getopts;
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::io::{Read, Write};
 use std::thread;
+
+use getopts::Options;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -205,9 +209,24 @@ impl std::ops::IndexMut<isize> for State {
 }
 
 fn main() {
-    let filenames: Vec<String> = std::iter::FromIterator::from_iter(std::env::args());
+    let mut opts = Options::new();
+    opts.optflag("n", "dry-run", "don't actually run");
+    opts.optflag("0", "no-optimize", "don't optimize");
+    opts.optflag("h", "help", "print this help menu");
 
-    for filename in &filenames[1..] {
+    let matches = match opts.parse(std::env::args().skip(1)) {
+        Ok(m) => m,
+        Err(f) => {
+            writeln!(&mut io::stderr(), "{}", f).unwrap();
+            std::process::exit(2);
+        }
+    };
+    if matches.opt_present("h") {
+        print!("{}", opts.usage("Usage: brain_rust [options] FILE... "));
+        return;
+    }
+
+    for filename in &matches.free[..] {
         match fs::File::open(filename)
                   .map(|f| io::BufReader::new(f))
                   .and_then(|mut reader| {
@@ -218,8 +237,12 @@ fn main() {
                   .and_then(|buffer| parse(&buffer[..])) {
             Ok(ops) => {
                 let mut opstream = OpStream { ops: ops };
-                opstream.optimize();
-                State::new().run(opstream.get());
+                if !matches.opt_present("0") {
+                    opstream.optimize();
+                }
+                if !matches.opt_present("n") {
+                    State::new().run(opstream.get());
+                }
             }
             Err(e) => {
                 writeln!(&mut io::stderr(),

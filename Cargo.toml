@@ -3,3 +3,6 @@
 name = "brain_rust"
 version = "0.0.1"
 authors = ["Michael Gruenewald <mail@michaelgruenewald.eu>"]
+
+[dependencies]
+getopts = "0.2"
