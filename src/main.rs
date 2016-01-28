@@ -78,12 +78,12 @@ impl OpStream {
         let mut rel_index = 0;
 
         for op in &self.ops[..] {
-            match op {
-                &Add(x) => {
+            match *op {
+                Add(x) => {
                     let new_val = map.get(&rel_index).unwrap_or(&0).wrapping_add(x);
                     map.insert(rel_index, new_val);
                 }
-                &Mov(x) => {
+                Mov(x) => {
                     rel_index += x;
                 }
                 _ => {
@@ -153,27 +153,27 @@ impl State {
                     return true;
                 }
 
-                let mut _v = self[0];
-                let mut _n = 0;
+                let mut v0 = self[0];
+                let mut iterations = 0;
 
-                while _v != 0 {
-                    _v = _v.wrapping_add(d);
-                    if _v == self[0] {
+                while v0 != 0 {
+                    v0 = v0.wrapping_add(d);
+                    if v0 == self[0] {
                         // stalled: the current transfer will never complete
                         loop {
                             thread::park()
                         }
                     }
-                    _n += 1
+                    iterations += 1
                 }
 
                 self[0] = 0;
                 for &(k, v) in &map[..] {
-                    self[k] = self[k].wrapping_add(v.wrapping_mul(_n));
+                    self[k] = self[k].wrapping_add(v.wrapping_mul(iterations));
                 }
             }
         }
-        return true;
+        true
     }
 
     fn run(&mut self, ops: &[Op]) -> bool {
@@ -182,14 +182,14 @@ impl State {
                 return false;
             }
         }
-        return true;
+        true
     }
 }
 
 impl std::ops::Index<isize> for State {
     type Output = u8;
-    fn index(&self, _index: isize) -> &u8 {
-        let idx = self.rel_index(_index);
+    fn index(&self, index: isize) -> &u8 {
+        let idx = self.rel_index(index);
         if idx >= self.memory.len() {
             &ZERO
         } else {
@@ -199,8 +199,8 @@ impl std::ops::Index<isize> for State {
 }
 
 impl std::ops::IndexMut<isize> for State {
-    fn index_mut(&mut self, _index: isize) -> &mut u8 {
-        let idx = self.rel_index(_index);
+    fn index_mut(&mut self, index: isize) -> &mut u8 {
+        let idx = self.rel_index(index);
         if idx >= self.memory.len() {
             self.memory.resize(idx * 2 + 1, 0);
         }
@@ -228,7 +228,7 @@ fn main() {
 
     for filename in &matches.free[..] {
         match fs::File::open(filename)
-                  .map(|f| io::BufReader::new(f))
+                  .map(io::BufReader::new)
                   .and_then(|mut reader| {
                       let mut buffer = Vec::new();
                       reader.read_to_end(&mut buffer).map(|_| buffer)
