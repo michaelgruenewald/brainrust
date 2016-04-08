@@ -50,7 +50,8 @@ fn main() {
                     opstream.optimize();
                 }
                 if !matches.opt_present("n") {
-                    State::new().run(opstream.get());
+                    let mut state: State = Default::default();
+                    state.run(opstream.get());
                 }
             }
             Err(e) => {

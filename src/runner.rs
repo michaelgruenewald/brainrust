@@ -8,19 +8,13 @@ use structs::Op::*;
 
 static ZERO: u8 = 0;
 
+#[derive(Default)]
 pub struct State {
     index: usize,
     memory: Vec<u8>,
 }
 
 impl State {
-    pub fn new() -> State {
-        State {
-            index: 0,
-            memory: vec![],
-        }
-    }
-
     fn rel_index(&self, relative: isize) -> usize {
         (self.index as isize + relative) as usize
     }
@@ -130,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_state_index_mut() {
-        let mut state = State::new();
+        let mut state: State = Default::default();
         state[0] = 23;
         assert_eq!(23, state.memory[state.index]);
         state.index = 5;
@@ -140,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_state_step_add() {
-        let mut state = State::new();
+        let mut state: State = Default::default();
         state.step(&Add(23));
         assert_eq!(23, state[0]);
         state.step(&Add(42));
@@ -151,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_state_step_mov() {
-        let mut state = State::new();
+        let mut state: State = Default::default();
         state.step(&Mov(1));
         assert_eq!(1, state.index);
         state.step(&Mov(42));
@@ -162,7 +156,7 @@ mod tests {
 
     #[test]
     fn test_state_step_loop() {
-        let mut state = State::new();
+        let mut state: State = Default::default();
         state[0] = 23;
         state.step(&Loop(OpStream { ops: vec![Add(1)] }));
         assert_eq!(0, state[0]);
@@ -170,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_state_step_transfer() {
-        let mut state = State::new();
+        let mut state: State = Default::default();
         state[0] = 15;
         state[1] = 7;
         state.step(&Transfer(5, vec![(1, 2)]));
