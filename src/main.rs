@@ -35,32 +35,39 @@ fn main() {
         return;
     }
 
+    let dry_run = matches.opt_present("n");
+    let no_optimize = matches.opt_present("0");
+
     for filename in &matches.free[..] {
-        match fs::File::open(filename)
-                  .map(io::BufReader::new)
-                  .and_then(|mut reader| {
-                      let mut buffer = Vec::new();
-                      reader.read_to_end(&mut buffer).map(|_| buffer)
-                  })
-                  .map_err(|e| format!("{}", e))
-                  .and_then(|buffer| parse(&buffer[..])) {
-            Ok(ops) => {
-                let mut opstream = OpStream { ops: ops };
-                if !matches.opt_present("0") {
-                    opstream.optimize();
-                }
-                if !matches.opt_present("n") {
-                    let mut state: State = Default::default();
-                    state.run(opstream.get());
-                }
-            }
+        let buffer = match read_file(filename) {
+            Ok(v) => v,
             Err(e) => {
-                writeln!(&mut io::stderr(),
-                         "Error while processing {}: {}",
-                         filename,
-                         e)
-                    .unwrap();
+                writeln!(&mut io::stderr(), "Error while reading {}: {}", filename, e).unwrap();
+                continue;
             }
+        };
+        let ops = match parse(&buffer[..]) {
+            Ok(v) => v,
+            Err(e) => {
+                writeln!(&mut io::stderr(), "Error while parsing {}: {}", filename, e).unwrap();
+                continue;
+            }
+        };
+        let mut opstream = OpStream { ops: ops };
+        if !no_optimize {
+            opstream.optimize();
+        }
+        if !dry_run {
+            let mut state: State = Default::default();
+            state.run(opstream.get());
         }
     }
+}
+
+fn read_file(filename: &str) -> Result<Vec<u8>, io::Error> {
+    let file = try!(fs::File::open(filename));
+    let mut reader = io::BufReader::new(file);
+    let mut buffer = Vec::new();
+    try!(reader.read_to_end(&mut buffer));
+    Ok(buffer)
 }
