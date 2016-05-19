@@ -31,7 +31,7 @@ fn main() {
         }
     };
     if matches.opt_present("h") {
-        print!("{}", opts.usage("Usage: brain_rust [options] FILE... "));
+        write!(&mut io::stderr(), "{}", opts.usage("Usage: brain_rust [options] FILE... ")).unwrap();
         return;
     }
 
