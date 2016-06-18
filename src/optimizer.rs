@@ -8,21 +8,21 @@ impl OpStream {
         let mut i = 0;
         while i < self.ops.len() {
             match &self.ops[i..] {
-                [Add(a), Add(b), ..] => {
+                &[Add(a), Add(b), ..] => {
                     self.ops[i] = Add(a.wrapping_add(b));
                     self.ops.remove(i + 1);
                 }
-                [Mov(a), Mov(b), ..] => {
+                &[Mov(a), Mov(b), ..] => {
                     self.ops[i] = Mov(a + b);
                     self.ops.remove(i + 1);
                 }
-                [Add(0), ..] | [Mov(0), ..] => {
+                &[Add(0), ..] | &[Mov(0), ..] => {
                     self.ops.remove(i);
                     if i > 0 {
                         i -= 1;
                     }
                 }
-                [Loop(_), ..] => {
+                &[Loop(_), ..] => {
                     let maybe_new_op;
 
                     if let &mut Loop(ref mut stream) = &mut self.ops[i] {
