@@ -51,12 +51,14 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let input = b"+-[+.,]+";
+        let input = b"+>-[+.,]+<";
         assert_eq!(parse(&input[..]),
                    Ok(vec![Add(0x01),
+                           Mov(1),
                            Add(0xff),
                            Loop(OpStream { ops: vec![Add(1), Out, In] }),
-                           Add(0x01)]));
+                           Add(0x01),
+                           Mov(-1)]));
     }
 
     #[test]
