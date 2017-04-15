@@ -1,3 +1,11 @@
 language: rust
 rust:
 - nightly
+
+addons:
+  apt:
+    packages:
+      - kcov
+
+after_success: |
+  kcov --include-path=src --verify coverage "$(cargo test --no-run --message-format=json | jq -r "select(.profile.test == true) | .filenames[]")"
