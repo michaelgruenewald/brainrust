@@ -62,6 +62,11 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_empty() {
+        assert_eq!(parse(&b""[..]), Ok(vec![]));
+    }
+
+    #[test]
     fn test_parse_stray() {
         let input = include_bytes!("../test_cases/stray.bf");
         assert_eq!(parse(&input[..]),
