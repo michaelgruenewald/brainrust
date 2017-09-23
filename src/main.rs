@@ -58,8 +58,7 @@ fn main() {
             opstream.optimize();
         }
         if !dry_run {
-            let mut state: State = Default::default();
-            state.run(opstream.get());
+            State::new(&mut io::stdin(), &mut io::stdout()).run(opstream.get());
         }
     }
 }
