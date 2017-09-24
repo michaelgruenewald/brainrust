@@ -148,6 +148,37 @@ mod tests {
     }
 
     #[test]
+    fn test_state_run() {
+        let mut input = empty();
+        let mut output = sink();
+        let mut state = State::new(&mut input, &mut output);
+        let result = state.run(&vec![Add(1), Add(1)]);
+        assert_eq!(true, result);
+        assert_eq!(2, state[0]);
+    }
+
+    #[test]
+    fn test_state_run_stop() {
+        let mut input = empty();
+        let mut output = sink();
+        let mut state = State::new(&mut input, &mut output);
+        let result = state.run(&vec![Add(1), In]);
+        assert_eq!(false, result);
+        assert_eq!(1, state[0]);
+    }
+
+    #[test]
+    fn test_state_run_nested_stop() {
+        let mut input = empty();
+        let mut output = sink();
+        let mut state = State::new(&mut input, &mut output);
+        state[0] = 1;
+        let result = state.run(&vec![Loop(OpStream { ops: vec![Add(1), In] })]);
+        assert_eq!(false, result);
+        assert_eq!(2, state[0]);
+    }
+
+    #[test]
     fn test_state_step_add() {
         let mut input = empty();
         let mut output = sink();
@@ -193,6 +224,16 @@ mod tests {
         state.step(&Transfer(5, vec![(1, 2)]));
         assert_eq!(0, state[0]);
         assert_eq!(1, state[1]);
+    }
+
+    #[test]
+    fn test_state_step_transfer_noiteration() {
+        let mut input = empty();
+        let mut output = sink();
+        let mut state = State::new(&mut input, &mut output);
+        state[0] = 0;
+        state.step(&Transfer(5, vec![(1, 2)]));
+        assert_eq!(0, state[0]);
     }
 
     #[test]
