@@ -64,9 +64,9 @@ fn main() {
 }
 
 fn read_file(filename: &str) -> Result<Vec<u8>, io::Error> {
-    let file = try!(fs::File::open(filename));
-    let mut reader = io::BufReader::new(file);
     let mut buffer = Vec::new();
-    try!(reader.read_to_end(&mut buffer));
-    Ok(buffer)
+    fs::File::open(filename)
+        .map(|file| io::BufReader::new(file))
+        .and_then(|mut reader| reader.read_to_end(&mut buffer))
+        .map(|_| buffer)
 }
