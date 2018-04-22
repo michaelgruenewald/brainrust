@@ -53,7 +53,7 @@ fn main() {
                 continue;
             }
         };
-        let mut opstream = OpStream { ops: ops };
+        let mut opstream = OpStream { ops };
         if !no_optimize {
             opstream.optimize();
         }

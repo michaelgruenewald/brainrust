@@ -19,8 +19,8 @@ impl<'a> State<'a> {
         State {
             index: 0,
             memory: vec![],
-            input: input,
-            output: output,
+            input,
+            output,
         }
     }
 
@@ -45,7 +45,7 @@ impl<'a> State<'a> {
             }
             Out => {
                 let c = &[self[0]];
-                self.output.write(c).unwrap();
+                self.output.write_all(c).unwrap();
             }
             Loop(ref ops) => {
                 while self[0] != 0 {
