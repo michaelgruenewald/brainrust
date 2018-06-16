@@ -44,8 +44,7 @@ impl<'a> State<'a> {
                 self[0] = c[0];
             }
             Out => {
-                let c = &[self[0]];
-                self.output.write_all(c).unwrap();
+                self.output.write_all(&[self[0]]).unwrap();
             }
             Loop(ref ops) => {
                 while self[0] != 0 {

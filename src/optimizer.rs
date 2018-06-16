@@ -22,20 +22,11 @@ impl OpStream {
                         i -= 1;
                     }
                 }
-                [Loop(_), ..] => {
-                    let maybe_new_op;
-
-                    if let Loop(ref mut stream) = self.ops[i] {
-                        stream.optimize();
-                        maybe_new_op = stream.find_alternative();
-                    } else {
-                        unreachable!()
-                    }
-
-                    if let Some(new_op) = maybe_new_op {
+                [Loop(ref mut stream), ..] => {
+                    stream.optimize();
+                    if let Some(new_op) = stream.find_alternative() {
                         self.ops[i] = new_op;
                     }
-
                     i += 1
                 }
                 _ => i += 1,
