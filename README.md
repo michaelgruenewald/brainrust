@@ -40,3 +40,9 @@ These kinds of loops are represented using the `Transfer` operation in the
 code. They may be executed more efficiently because the number of iterations
 can be computed solely by the value of the initial cell and the effect of a
 single iteration to it.
+
+## FAQ
+
+### Is it any good?
+
+[Yes.](https://news.ycombinator.com/item?id=3067434)
