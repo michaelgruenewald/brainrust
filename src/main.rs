@@ -24,23 +24,20 @@ fn main() {
     opts.optflag("0", "no-optimize", "don't optimize");
     opts.optflag("h", "help", "print this help menu");
 
-    let matches = match opts.parse(std::env::args().skip(1)) {
-        Ok(m) => m,
-        Err(f) => {
-            writeln!(&mut io::stderr(), "{}", f).unwrap();
-            std::process::exit(2);
-        }
-    };
+    let matches = opts.parse(std::env::args().skip(1)).unwrap_or_else(|f| {
+        writeln!(&mut io::stderr(), "{}", f).unwrap();
+        std::process::exit(2)
+    });
     if matches.opt_present("h") {
         write!(&mut io::stderr(), "{}", opts.usage("Usage: brain_rust [options] FILE... ")).unwrap();
-        return;
+        std::process::exit(2);
     }
 
     let dry_run = matches.opt_present("n");
     let no_optimize = matches.opt_present("0");
 
-    for filename in &matches.free[..] {
-        let buffer = match read_file(filename) {
+    for filename in matches.free {
+        let buffer = match read_file(&filename) {
             Ok(v) => v,
             Err(e) => {
                 writeln!(&mut io::stderr(), "Error while reading {}: {}", filename, e).unwrap();

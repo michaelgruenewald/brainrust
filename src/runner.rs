@@ -5,8 +5,6 @@ use std::thread;
 use structs::Op;
 use structs::Op::*;
 
-static ZERO: u8 = 0;
-
 pub struct State<'a> {
     index: usize,
     memory: Vec<u8>,
@@ -96,7 +94,7 @@ impl<'a> Index<isize> for State<'a> {
     fn index(&self, index: isize) -> &u8 {
         let idx = self.rel_index(index);
         if idx >= self.memory.len() {
-            &ZERO
+            &0
         } else {
             &self.memory[idx]
         }
@@ -151,7 +149,7 @@ mod tests {
         let mut input = empty();
         let mut output = sink();
         let mut state = State::new(&mut input, &mut output);
-        let result = state.run(&vec![Add(1), Add(1)]);
+        let result = state.run(&[Add(1), Add(1)]);
         assert_eq!(true, result);
         assert_eq!(2, state[0]);
     }
@@ -161,7 +159,7 @@ mod tests {
         let mut input = empty();
         let mut output = sink();
         let mut state = State::new(&mut input, &mut output);
-        let result = state.run(&vec![Add(1), In]);
+        let result = state.run(&[Add(1), In]);
         assert_eq!(false, result);
         assert_eq!(1, state[0]);
     }
@@ -172,7 +170,7 @@ mod tests {
         let mut output = sink();
         let mut state = State::new(&mut input, &mut output);
         state[0] = 1;
-        let result = state.run(&vec![Loop(OpStream { ops: vec![Add(1), In] })]);
+        let result = state.run(&[Loop(OpStream { ops: vec![Add(1), In] })]);
         assert_eq!(false, result);
         assert_eq!(2, state[0]);
     }
