@@ -8,12 +8,12 @@ use structs::Op::*;
 pub struct State<'a> {
     index: usize,
     memory: Vec<u8>,
-    input: &'a mut Read,
-    output: &'a mut Write,
+    input: &'a mut dyn Read,
+    output: &'a mut dyn Write,
 }
 
 impl<'a> State<'a> {
-    pub fn new<'b>(input: &'b mut Read, output: &'b mut Write) -> State<'b> {
+    pub fn new<'b>(input: &'b mut dyn Read, output: &'b mut dyn Write) -> State<'b> {
         State {
             index: 0,
             memory: vec![],
