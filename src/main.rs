@@ -1,6 +1,3 @@
-#![feature(slice_patterns)]
-#![feature(nll)]
-
 extern crate getopts;
 
 use std::fs;
