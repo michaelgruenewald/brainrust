@@ -1,8 +1,12 @@
 [package]
-
 name = "brain_rust"
 version = "0.0.1"
 authors = ["Michael Gruenewald <mail@michaelgruenewald.eu>"]
 
+[features]
+default = ["llvm"]
+llvm = ["inkwell"]
+
 [dependencies]
 getopts = "0.2"
+inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm9-0", optional = true }
