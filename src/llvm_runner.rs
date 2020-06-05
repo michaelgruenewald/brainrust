@@ -48,8 +48,7 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
                     ptr = builder.build_int_add(ptr, size_t.const_int((*i) as u64, true), "ptr");
                 }
                 Add(i) => {
-                    let mem_ptr =
-                        unsafe { builder.build_in_bounds_gep(self.memory, &[ptr], "mem_ptr") };
+                    let mem_ptr = unsafe { builder.build_gep(self.memory, &[ptr], "mem_ptr") };
                     builder.build_store(
                         mem_ptr,
                         builder.build_int_add(
@@ -60,8 +59,7 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
                     );
                 }
                 In => {
-                    let mem_ptr =
-                        unsafe { builder.build_in_bounds_gep(self.memory, &[ptr], "mem_ptr") };
+                    let mem_ptr = unsafe { builder.build_gep(self.memory, &[ptr], "mem_ptr") };
                     let result = builder.build_call(
                         self.getcharfn,
                         &[
@@ -87,8 +85,7 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
                     builder.position_at_end(next_block);
                 }
                 Out => {
-                    let mem_ptr =
-                        unsafe { builder.build_in_bounds_gep(self.memory, &[ptr], "mem_ptr") };
+                    let mem_ptr = unsafe { builder.build_gep(self.memory, &[ptr], "mem_ptr") };
                     builder.build_call(
                         self.putcharfn,
                         &[
@@ -111,8 +108,7 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
                     test_ptr_phi.add_incoming(&[(&ptr, current_block)]);
                     ptr = test_ptr_phi.as_basic_value().into_int_value();
 
-                    let mem_ptr =
-                        unsafe { builder.build_in_bounds_gep(self.memory, &[ptr], "mem_ptr") };
+                    let mem_ptr = unsafe { builder.build_gep(self.memory, &[ptr], "mem_ptr") };
                     builder.build_conditional_branch(
                         builder.build_int_compare(
                             IntPredicate::EQ,
