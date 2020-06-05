@@ -116,8 +116,8 @@ mod tests {
     use super::State;
 
     use std::io::{empty, sink};
-    use structs::OpStream;
     use structs::Op::*;
+    use structs::OpStream;
 
     #[test]
     fn test_state_index() {
@@ -170,7 +170,9 @@ mod tests {
         let mut output = sink();
         let mut state = State::new(&mut input, &mut output);
         state[0] = 1;
-        let result = state.run(&[Loop(OpStream { ops: vec![Add(1), In] })]);
+        let result = state.run(&[Loop(OpStream {
+            ops: vec![Add(1), In],
+        })]);
         assert_eq!(false, result);
         assert_eq!(2, state[0]);
     }

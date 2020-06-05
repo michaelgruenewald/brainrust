@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use structs::{Op, OpStream};
 use structs::Op::*;
+use structs::{Op, OpStream};
 
 impl OpStream {
     pub fn optimize(&mut self) {
@@ -57,41 +57,58 @@ impl OpStream {
             return None;
         }
 
-        Some(Transfer(map.remove(&0).unwrap_or(0), map.into_iter().collect()))
+        Some(Transfer(
+            map.remove(&0).unwrap_or(0),
+            map.into_iter().collect(),
+        ))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use structs::OpStream;
     use structs::Op::*;
+    use structs::OpStream;
 
     #[test]
     fn test_opstream_optimize() {
         let mut opstream = OpStream {
-            ops: vec![Mov(1),
-                      Mov(1),
-                      Add(0x01),
-                      Add(0xff),
-                      Add(0xff),
-                      Mov(1),
-                      Mov(-1),
-                      Loop(OpStream { ops: vec![Mov(2), Mov(3)] })],
+            ops: vec![
+                Mov(1),
+                Mov(1),
+                Add(0x01),
+                Add(0xff),
+                Add(0xff),
+                Mov(1),
+                Mov(-1),
+                Loop(OpStream {
+                    ops: vec![Mov(2), Mov(3)],
+                }),
+            ],
         };
         opstream.optimize();
 
-        assert_eq!(opstream,
-                   OpStream { ops: vec![Mov(2), Add(0xff), Loop(OpStream { ops: vec![Mov(5)] })] });
+        assert_eq!(
+            opstream,
+            OpStream {
+                ops: vec![Mov(2), Add(0xff), Loop(OpStream { ops: vec![Mov(5)] })]
+            }
+        );
     }
 
     #[test]
     fn test_opstream_optimize_transfer() {
         let mut opstream = OpStream {
-            ops: vec![Loop(OpStream { ops: vec![Add(0x01), Mov(3), Add(0xff), Mov(-3)] })],
+            ops: vec![Loop(OpStream {
+                ops: vec![Add(0x01), Mov(3), Add(0xff), Mov(-3)],
+            })],
         };
         opstream.optimize();
 
-        assert_eq!(opstream,
-                   OpStream { ops: vec![Transfer(1, vec![(3, 255)])] });
+        assert_eq!(
+            opstream,
+            OpStream {
+                ops: vec![Transfer(1, vec![(3, 255)])]
+            }
+        );
     }
 }

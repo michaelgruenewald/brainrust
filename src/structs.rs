@@ -1,6 +1,4 @@
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Op {
     Add(u8),
     Mov(isize),
@@ -12,9 +10,7 @@ pub enum Op {
     Transfer(u8, Vec<(isize, u8)>),
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct OpStream {
     pub ops: Vec<Op>,
 }

@@ -26,7 +26,12 @@ fn main() {
         std::process::exit(2)
     });
     if matches.opt_present("h") {
-        write!(&mut io::stderr(), "{}", opts.usage("Usage: brain_rust [options] FILE... ")).unwrap();
+        write!(
+            &mut io::stderr(),
+            "{}",
+            opts.usage("Usage: brain_rust [options] FILE... ")
+        )
+        .unwrap();
         std::process::exit(2);
     }
 

@@ -1,7 +1,7 @@
 use std::fmt;
 
-use structs::{Op, OpStream};
 use structs::Op::*;
+use structs::{Op, OpStream};
 
 #[derive(Copy, Clone)]
 struct Position {
@@ -59,19 +59,25 @@ pub fn parse(text: &[u8]) -> Result<Vec<Op>, String> {
 mod tests {
     use super::parse;
 
-    use structs::OpStream;
     use structs::Op::*;
+    use structs::OpStream;
 
     #[test]
     fn test_parse() {
         let input = b"+>-[+.,]+<";
-        assert_eq!(parse(&input[..]),
-                   Ok(vec![Add(0x01),
-                           Mov(1),
-                           Add(0xff),
-                           Loop(OpStream { ops: vec![Add(1), Out, In] }),
-                           Add(0x01),
-                           Mov(-1)]));
+        assert_eq!(
+            parse(&input[..]),
+            Ok(vec![
+                Add(0x01),
+                Mov(1),
+                Add(0xff),
+                Loop(OpStream {
+                    ops: vec![Add(1), Out, In]
+                }),
+                Add(0x01),
+                Mov(-1)
+            ])
+        );
     }
 
     #[test]
@@ -82,14 +88,18 @@ mod tests {
     #[test]
     fn test_parse_stray() {
         let input = include_bytes!("../test_cases/stray.bf");
-        assert_eq!(parse(&input[..]),
-                   Err("Stray ] at line 3, column 3".to_string()));
+        assert_eq!(
+            parse(&input[..]),
+            Err("Stray ] at line 3, column 3".to_string())
+        );
     }
 
     #[test]
     fn test_parse_incomplete() {
         let input = include_bytes!("../test_cases/incomplete.bf");
-        assert_eq!(parse(&input[..]),
-                   Err("Missing ] at line 4, column 1".to_string()));
+        assert_eq!(
+            parse(&input[..]),
+            Err("Missing ] at line 4, column 1".to_string())
+        );
     }
 }
