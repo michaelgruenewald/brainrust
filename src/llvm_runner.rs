@@ -13,7 +13,10 @@ use inkwell::OptimizationLevel;
 use structs::Op;
 use structs::Op::*;
 
+const MEMSIZE: usize = 30000;
+
 pub struct LlvmState<'a> {
+    memory: [i8; MEMSIZE],
     input: &'a mut dyn Read,
     output: &'a mut dyn Write,
 }
@@ -137,11 +140,13 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
     }
 }
 
-const MEMSIZE: usize = 30000;
-
 impl<'a> LlvmState<'a> {
     pub fn new<'b>(input: &'b mut dyn Read, output: &'b mut dyn Write) -> LlvmState<'b> {
-        LlvmState { input, output }
+        LlvmState {
+            memory: [0; MEMSIZE],
+            input,
+            output,
+        }
     }
 
     pub fn run(&mut self, ops: &[Op]) -> bool {
@@ -215,14 +220,13 @@ impl<'a> LlvmState<'a> {
         execution_engine.add_global_mapping(&getcharfn, LlvmState::getchar as usize);
         execution_engine.add_global_mapping(&putcharfn, LlvmState::putchar as usize);
 
-        let mut memory: [i8; MEMSIZE] = [0; MEMSIZE];
         unsafe {
             execution_engine
                 .get_function::<unsafe extern "C" fn(*mut [i8; MEMSIZE], *mut std::ffi::c_void) -> u64>(
                     "run",
                 )
                 .unwrap()
-                .call(&mut memory as *mut [i8; MEMSIZE], /* FIXME: evil */ std::mem::transmute(self));
+                .call(&mut self.memory as *mut [i8; MEMSIZE], /* FIXME: evil */ std::mem::transmute(self));
         };
 
         true
