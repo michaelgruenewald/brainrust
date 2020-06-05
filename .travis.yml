@@ -1,3 +1,7 @@
 language: rust
+addons:
+  apt:
+    packages:
+    - llvm-9-dev
 rust:
 - nightly
