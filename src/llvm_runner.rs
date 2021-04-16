@@ -19,6 +19,7 @@ pub struct LlvmState<'a> {
     memory: [i8; MEMSIZE],
     input: &'a mut dyn Read,
     output: &'a mut dyn Write,
+    optimize: bool,
 }
 
 struct Compiler<'ctx, 'a> {
@@ -141,11 +142,16 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
 }
 
 impl<'a> LlvmState<'a> {
-    pub fn new<'b>(input: &'b mut dyn Read, output: &'b mut dyn Write) -> LlvmState<'b> {
+    pub fn new<'b>(
+        input: &'b mut dyn Read,
+        output: &'b mut dyn Write,
+        optimize: bool,
+    ) -> LlvmState<'b> {
         LlvmState {
             memory: [0; MEMSIZE],
             input,
             output,
+            optimize,
         }
     }
 
@@ -153,7 +159,11 @@ impl<'a> LlvmState<'a> {
         let context = Context::create();
         let module = context.create_module("program");
         let execution_engine = module
-            .create_jit_execution_engine(OptimizationLevel::Default)
+            .create_jit_execution_engine(if self.optimize {
+                OptimizationLevel::Aggressive
+            } else {
+                OptimizationLevel::None
+            })
             .unwrap();
         let builder = context.create_builder();
 

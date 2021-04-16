@@ -1,4 +1,4 @@
-extern crate getopts;
+extern crate clap;
 
 #[cfg(feature = "llvm")]
 extern crate inkwell;
@@ -7,7 +7,7 @@ use std::fs;
 use std::io;
 use std::io::{Read, Write};
 
-use getopts::Options;
+use clap::{App, Arg};
 
 mod llvm_runner;
 mod optimizer;
@@ -17,41 +17,43 @@ mod structs;
 
 #[cfg(feature = "llvm")]
 use llvm_runner::LlvmState;
+
 use parser::parse;
 use runner::State;
 use structs::OpStream;
 
 fn main() {
-    let mut opts = Options::new();
-    #[cfg(feature = "llvm")]
-    opts.optflag("l", "llvm", "use llvm");
-    opts.optflag("n", "dry-run", "don't actually run");
-    opts.optflag("0", "no-optimize", "don't optimize");
-    opts.optflag("h", "help", "print this help menu");
-
-    let matches = opts.parse(std::env::args().skip(1)).unwrap_or_else(|f| {
-        writeln!(&mut io::stderr(), "{}", f).unwrap();
-        std::process::exit(2)
-    });
-    if matches.opt_present("h") {
-        write!(
-            &mut io::stderr(),
-            "{}",
-            opts.usage("Usage: brain_rust [options] FILE... ")
+    let app = App::new("BrainRust")
+        .arg(
+            Arg::with_name("dry-run")
+                .short("n")
+                .long("dry-run")
+                .help("Don't actually execute the program"),
         )
-        .unwrap();
-        std::process::exit(2);
-    }
+        .arg(
+            Arg::with_name("no-optimize")
+                .short("0")
+                .long("no-optimize")
+                .help("Don't optimize before running"),
+        )
+        .arg(Arg::with_name("FILES").min_values(1).required(true));
 
-    let dry_run = matches.opt_present("n");
-    let no_optimize = matches.opt_present("0");
     #[cfg(feature = "llvm")]
-    let use_llvm = matches.opt_present("l");
-    #[cfg(not(feature = "llvm"))]
-    let use_llvm = false;
+    let app = app.arg(
+        Arg::with_name("llvm")
+            .short("l")
+            .long("llvm")
+            .help("Execute using LLVM JIT"),
+    );
 
-    for filename in matches.free {
-        let buffer = match read_file(&filename) {
+    let matches = app.get_matches();
+
+    let dry_run = matches.is_present("dryrun");
+    let no_optimize = matches.is_present("no-optimize");
+    let use_llvm = cfg!(feature = "llvm") && matches.is_present("llvm");
+
+    for filename in matches.values_of("FILES").unwrap() {
+        let buffer = match read_file(filename) {
             Ok(v) => v,
             Err(e) => {
                 writeln!(&mut io::stderr(), "Error while reading {}: {}", filename, e).unwrap();
@@ -72,7 +74,8 @@ fn main() {
         if !dry_run {
             if use_llvm {
                 #[cfg(feature = "llvm")]
-                LlvmState::new(&mut io::stdin(), &mut io::stdout()).run(opstream.get());
+                LlvmState::new(&mut io::stdin(), &mut io::stdout(), !no_optimize)
+                    .run(opstream.get());
             } else {
                 State::new(&mut io::stdin(), &mut io::stdout()).run(opstream.get());
             };
