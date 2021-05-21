@@ -1,8 +1,0 @@
-language: rust
-dist: bionic
-addons:
-  apt:
-    packages:
-    - llvm-9-dev
-rust:
-- nightly
