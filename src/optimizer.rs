@@ -38,7 +38,7 @@ impl OpStream {
         let mut map: BTreeMap<isize, u8> = BTreeMap::new();
         let mut rel_index = 0;
 
-        for op in &self.ops[..] {
+        for op in &self.ops {
             match *op {
                 Add(x) => {
                     let new_val = map.get(&rel_index).unwrap_or(&0).wrapping_add(x);
@@ -53,14 +53,14 @@ impl OpStream {
             }
         }
 
-        if rel_index != 0 {
-            return None;
+        if rel_index == 0 {
+            Some(Transfer(
+                map.remove(&0).unwrap_or(0),
+                map.into_iter().collect(),
+            ))
+        } else {
+            None
         }
-
-        Some(Transfer(
-            map.remove(&0).unwrap_or(0),
-            map.into_iter().collect(),
-        ))
     }
 }
 

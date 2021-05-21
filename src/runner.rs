@@ -71,7 +71,7 @@ impl<'a> State<'a> {
                 }
 
                 self[0] = 0;
-                for &(k, v) in &map[..] {
+                for &(k, v) in map {
                     self[k] = self[k].wrapping_add(v.wrapping_mul(iterations));
                 }
             }

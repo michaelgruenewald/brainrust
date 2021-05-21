@@ -66,7 +66,7 @@ mod tests {
     fn test_parse() {
         let input = b"+>-[+.,]+<";
         assert_eq!(
-            parse(&input[..]),
+            parse(input),
             Ok(vec![
                 Add(0x01),
                 Mov(1),
@@ -82,24 +82,18 @@ mod tests {
 
     #[test]
     fn test_parse_empty() {
-        assert_eq!(parse(&b""[..]), Ok(vec![]));
+        assert_eq!(parse(b""), Ok(vec![]));
     }
 
     #[test]
     fn test_parse_stray() {
         let input = include_bytes!("../test_cases/stray.bf");
-        assert_eq!(
-            parse(&input[..]),
-            Err("Stray ] at line 3, column 3".to_string())
-        );
+        assert_eq!(parse(input), Err("Stray ] at line 3, column 3".into()));
     }
 
     #[test]
     fn test_parse_incomplete() {
         let input = include_bytes!("../test_cases/incomplete.bf");
-        assert_eq!(
-            parse(&input[..]),
-            Err("Missing ] at line 4, column 1".to_string())
-        );
+        assert_eq!(parse(input), Err("Missing ] at line 4, column 1".into()));
     }
 }

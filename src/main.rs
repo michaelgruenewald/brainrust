@@ -60,7 +60,7 @@ fn main() {
                 continue;
             }
         };
-        let ops = match parse(&buffer[..]) {
+        let ops = match parse(&buffer) {
             Ok(v) => v,
             Err(e) => {
                 writeln!(&mut io::stderr(), "Error while parsing {}: {}", filename, e).unwrap();

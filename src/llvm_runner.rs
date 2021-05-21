@@ -137,7 +137,7 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
             }
         }
 
-        return ptr;
+        ptr
     }
 }
 
