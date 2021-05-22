@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install LLVM
-      run: sudo apt-get install llvm-9-dev
+      run: sudo apt-get install llvm-11-dev libclang-common-11-dev
     - name: Build
       run: cargo build --verbose
     - name: Run tests

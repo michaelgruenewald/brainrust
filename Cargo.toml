@@ -1,13 +1,18 @@
 [package]
-name = "brain_rust"
-version = "0.0.1"
-authors = ["Michael Gruenewald <mail@michaelgruenewald.eu>"]
-license = "Apache-2.0"
+name = 'brain_rust'
+version = '0.0.1'
+authors = ['Michael Gruenewald <mail@michaelgruenewald.eu>']
+license = 'Apache-2.0'
 
 [features]
-default = ["llvm"]
-llvm = ["inkwell"]
+default = ['llvm']
+llvm = ['inkwell']
 
 [dependencies]
-clap = "2.33.3"
-inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm9-0", optional = true }
+clap = '2.33.3'
+
+[dependencies.inkwell]
+git = 'https://github.com/TheDan64/inkwell'
+branch = 'master'
+optional = true
+features = ['llvm11-0']
