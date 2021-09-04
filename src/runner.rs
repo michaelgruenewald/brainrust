@@ -2,8 +2,8 @@ use std::io::{Read, Write};
 use std::ops::{Index, IndexMut};
 use std::thread;
 
-use structs::Op;
-use structs::Op::*;
+use crate::structs::Op;
+use crate::structs::Op::*;
 
 pub struct State<'a> {
     index: usize,
@@ -115,9 +115,9 @@ impl<'a> IndexMut<isize> for State<'a> {
 mod tests {
     use super::State;
 
+    use crate::structs::Op::*;
+    use crate::structs::OpStream;
     use std::io::{empty, sink};
-    use structs::Op::*;
-    use structs::OpStream;
 
     #[test]
     fn test_state_index() {

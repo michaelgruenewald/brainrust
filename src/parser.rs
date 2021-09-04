@@ -1,7 +1,7 @@
 use std::fmt;
 
-use structs::Op::*;
-use structs::{Op, OpStream};
+use crate::structs::Op::*;
+use crate::structs::{Op, OpStream};
 
 #[derive(Copy, Clone)]
 struct Position {
@@ -59,8 +59,8 @@ pub fn parse(text: &[u8]) -> Result<Vec<Op>, String> {
 mod tests {
     use super::parse;
 
-    use structs::Op::*;
-    use structs::OpStream;
+    use crate::structs::Op::*;
+    use crate::structs::OpStream;
 
     #[test]
     fn test_parse() {

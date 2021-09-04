@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use structs::Op::*;
-use structs::{Op, OpStream};
+use crate::structs::Op::*;
+use crate::structs::{Op, OpStream};
 
 impl OpStream {
     pub fn optimize(&mut self) {
@@ -66,8 +66,8 @@ impl OpStream {
 
 #[cfg(test)]
 mod tests {
-    use structs::Op::*;
-    use structs::OpStream;
+    use crate::structs::Op::*;
+    use crate::structs::OpStream;
 
     #[test]
     fn test_opstream_optimize() {

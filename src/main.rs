@@ -1,8 +1,3 @@
-extern crate clap;
-
-#[cfg(feature = "llvm")]
-extern crate inkwell;
-
 use std::fs;
 use std::io;
 use std::io::{Read, Write};

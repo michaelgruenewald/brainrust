@@ -10,8 +10,8 @@ use inkwell::AddressSpace;
 use inkwell::IntPredicate;
 use inkwell::OptimizationLevel;
 
-use structs::Op;
-use structs::Op::*;
+use crate::structs::Op;
+use crate::structs::Op::*;
 
 const MEMSIZE: usize = 30000;
 
