@@ -150,7 +150,7 @@ mod tests {
         let mut output = sink();
         let mut state = State::new(&mut input, &mut output);
         let result = state.run(&[Add(1), Add(1)]);
-        assert_eq!(true, result);
+        assert!(result);
         assert_eq!(2, state[0]);
     }
 
@@ -160,7 +160,7 @@ mod tests {
         let mut output = sink();
         let mut state = State::new(&mut input, &mut output);
         let result = state.run(&[Add(1), In]);
-        assert_eq!(false, result);
+        assert!(!result);
         assert_eq!(1, state[0]);
     }
 
@@ -173,7 +173,7 @@ mod tests {
         let result = state.run(&[Loop(OpStream {
             ops: vec![Add(1), In],
         })]);
-        assert_eq!(false, result);
+        assert!(!result);
         assert_eq!(2, state[0]);
     }
 
@@ -241,7 +241,7 @@ mod tests {
         let mut output = sink();
         let mut state = State::new(&mut input, &mut output);
         let result = state.step(&In);
-        assert_eq!(true, result);
+        assert!(result);
         assert_eq!(23, state[0]);
     }
 
@@ -251,7 +251,7 @@ mod tests {
         let mut output = sink();
         let mut state = State::new(&mut input, &mut output);
         let result = state.step(&In);
-        assert_eq!(false, result);
+        assert!(!result);
     }
 
     #[test]

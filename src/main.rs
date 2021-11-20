@@ -1,6 +1,6 @@
 use std::fs;
 use std::io;
-use std::io::{Read, Write};
+use std::io::Read;
 
 use clap::{App, Arg};
 
@@ -51,14 +51,14 @@ fn main() {
         let buffer = match read_file(filename) {
             Ok(v) => v,
             Err(e) => {
-                writeln!(&mut io::stderr(), "Error while reading {}: {}", filename, e).unwrap();
+                eprintln!("Error while reading {}: {}", filename, e);
                 continue;
             }
         };
         let ops = match parse(&buffer) {
             Ok(v) => v,
             Err(e) => {
-                writeln!(&mut io::stderr(), "Error while parsing {}: {}", filename, e).unwrap();
+                eprintln!("Error while parsing {}: {}", filename, e);
                 continue;
             }
         };
