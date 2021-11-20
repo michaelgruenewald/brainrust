@@ -35,14 +35,13 @@ impl OpStream {
     }
 
     fn find_alternative(&self) -> Option<Op> {
-        let mut map: BTreeMap<isize, u8> = BTreeMap::new();
+        let mut map = BTreeMap::<isize, u8>::new();
         let mut rel_index = 0;
 
         for op in &self.ops {
             match *op {
                 Add(x) => {
-                    let new_val = map.get(&rel_index).unwrap_or(&0).wrapping_add(x);
-                    map.insert(rel_index, new_val);
+                    map.insert(rel_index, map.get(&rel_index).unwrap_or(&0).wrapping_add(x));
                 }
                 Mov(x) => {
                     rel_index += x;

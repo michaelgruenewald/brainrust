@@ -135,7 +135,7 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
                     self.builder.position_at_end(next_block);
                 }
                 Transfer(_, _) => {
-                    panic!("Transfer is not implemented for the LLVM backend.");
+                    unimplemented!("Transfer is not implemented for the LLVM backend.");
                 }
             }
         }
