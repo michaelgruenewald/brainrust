@@ -1,11 +1,12 @@
 #![cfg(feature = "llvm")]
+use inkwell::types::BasicMetadataTypeEnum;
+use inkwell::values::BasicMetadataValueEnum;
 use std::io::{Read, Write};
 
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::ExecutionEngine;
-use inkwell::types::BasicTypeEnum;
-use inkwell::values::{BasicValue, FunctionValue, IntValue, PointerValue};
+use inkwell::values::{FunctionValue, IntValue, PointerValue};
 use inkwell::AddressSpace;
 use inkwell::IntPredicate;
 use inkwell::OptimizationLevel;
@@ -67,8 +68,8 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
                     let result = builder.build_call(
                         self.getcharfn,
                         &[
-                            mem_ptr.as_basic_value_enum(),
-                            self.state.as_basic_value_enum(),
+                            BasicMetadataValueEnum::PointerValue(mem_ptr),
+                            BasicMetadataValueEnum::PointerValue(self.state),
                         ],
                         "call",
                     );
@@ -93,8 +94,10 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
                     builder.build_call(
                         self.putcharfn,
                         &[
-                            builder.build_load(mem_ptr, "v"),
-                            self.state.as_basic_value_enum(),
+                            BasicMetadataValueEnum::IntValue(
+                                builder.build_load(mem_ptr, "v").into_int_value(),
+                            ),
+                            BasicMetadataValueEnum::PointerValue(self.state),
                         ],
                         "call",
                     );
@@ -177,7 +180,7 @@ impl<'a> LlvmState<'a> {
             context.bool_type().fn_type(
                 &[
                     byte.ptr_type(AddressSpace::Generic).into(),
-                    BasicTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
+                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
                 ],
                 false,
             ),
@@ -188,7 +191,7 @@ impl<'a> LlvmState<'a> {
             context.void_type().fn_type(
                 &[
                     byte.into(),
-                    BasicTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
+                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
                 ],
                 false,
             ),
@@ -199,8 +202,8 @@ impl<'a> LlvmState<'a> {
             "run",
             context.void_type().fn_type(
                 &[
-                    BasicTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
-                    BasicTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
+                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
+                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
                 ],
                 false,
             ),
