@@ -5,15 +5,15 @@ use std::thread;
 use crate::structs::Op;
 use crate::structs::Op::*;
 
-pub struct State<'a> {
+pub struct State<'a, R: Read, W: Write> {
     index: usize,
     memory: Vec<u8>,
-    input: &'a mut dyn Read,
-    output: &'a mut dyn Write,
+    input: &'a mut R,
+    output: &'a mut W,
 }
 
-impl<'a> State<'a> {
-    pub fn new<'b>(input: &'b mut dyn Read, output: &'b mut dyn Write) -> State<'b> {
+impl<'a, R: Read, W: Write> State<'a, R, W> {
+    pub fn new<'b>(input: &'b mut R, output: &'b mut W) -> State<'b, R, W> {
         State {
             index: 0,
             memory: vec![],
@@ -89,7 +89,7 @@ impl<'a> State<'a> {
     }
 }
 
-impl<'a> Index<isize> for State<'a> {
+impl<'a, R: Read, W: Write> Index<isize> for State<'a, R, W> {
     type Output = u8;
     fn index(&self, index: isize) -> &u8 {
         let idx = self.rel_index(index);
@@ -101,7 +101,7 @@ impl<'a> Index<isize> for State<'a> {
     }
 }
 
-impl<'a> IndexMut<isize> for State<'a> {
+impl<'a, R: Read, W: Write> IndexMut<isize> for State<'a, R, W> {
     fn index_mut(&mut self, index: isize) -> &mut u8 {
         let idx = self.rel_index(index);
         if idx >= self.memory.len() {

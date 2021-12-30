@@ -16,10 +16,10 @@ use crate::structs::Op::*;
 
 const MEMSIZE: usize = 30000;
 
-pub struct LlvmState<'a> {
+pub struct LlvmState<'a, R: Read, W: Write> {
     memory: [i8; MEMSIZE],
-    input: &'a mut dyn Read,
-    output: &'a mut dyn Write,
+    input: &'a mut R,
+    output: &'a mut W,
     optimize: bool,
 }
 
@@ -144,12 +144,8 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
     }
 }
 
-impl<'a> LlvmState<'a> {
-    pub fn new<'b>(
-        input: &'b mut dyn Read,
-        output: &'b mut dyn Write,
-        optimize: bool,
-    ) -> LlvmState<'b> {
+impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
+    pub fn new<'b>(input: &'b mut R, output: &'b mut W, optimize: bool) -> LlvmState<'b, R, W> {
         LlvmState {
             memory: [0; MEMSIZE],
             input,
@@ -230,8 +226,8 @@ impl<'a> LlvmState<'a> {
 
         module.verify().unwrap();
 
-        execution_engine.add_global_mapping(&getcharfn, LlvmState::getchar as usize);
-        execution_engine.add_global_mapping(&putcharfn, LlvmState::putchar as usize);
+        execution_engine.add_global_mapping(&getcharfn, LlvmState::<R, W>::getchar as usize);
+        execution_engine.add_global_mapping(&putcharfn, LlvmState::<R, W>::putchar as usize);
 
         unsafe {
             execution_engine
@@ -245,7 +241,7 @@ impl<'a> LlvmState<'a> {
         true
     }
 
-    extern "C" fn getchar(ch: &mut u8, state: &mut LlvmState) -> bool {
+    extern "C" fn getchar(ch: &mut u8, state: &mut LlvmState<R, W>) -> bool {
         let mut c = [0u8];
         if state.input.read(&mut c).unwrap() == 0 {
             return false;
@@ -254,7 +250,7 @@ impl<'a> LlvmState<'a> {
         true
     }
 
-    extern "C" fn putchar(ch: u8, state: &mut LlvmState) {
+    extern "C" fn putchar(ch: u8, state: &mut LlvmState<R, W>) {
         state.output.write_all(&[ch]).unwrap();
     }
 }
