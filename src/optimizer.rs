@@ -52,14 +52,10 @@ impl OpStream {
             }
         }
 
-        if rel_index == 0 {
-            Some(Transfer(
-                map.remove(&0).unwrap_or(0),
-                map.into_iter().collect(),
-            ))
-        } else {
-            None
-        }
+        (rel_index == 0).then_some(Transfer(
+            map.remove(&0).unwrap_or(0),
+            map.into_iter().collect(),
+        ))
     }
 }
 
