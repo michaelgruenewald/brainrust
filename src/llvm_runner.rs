@@ -7,7 +7,6 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::execution_engine::ExecutionEngine;
 use inkwell::values::{FunctionValue, IntValue, PointerValue};
-use inkwell::AddressSpace;
 use inkwell::IntPredicate;
 use inkwell::OptimizationLevel;
 
@@ -39,10 +38,9 @@ struct Compiler<'ctx, 'a> {
 impl<'ctx, 'a> Compiler<'ctx, 'a> {
     fn compile(&self, ops: &[Op], start_ptr: IntValue<'ctx>) -> IntValue<'ctx> {
         let byte = self.context.i8_type();
-        let size_t = self.context.ptr_sized_int_type(
-            self.execution_engine.get_target_data(),
-            Some(AddressSpace::Generic),
-        );
+        let size_t = self
+            .context
+            .ptr_sized_int_type(self.execution_engine.get_target_data(), Default::default());
 
         let builder = self.builder;
         let mut ptr = start_ptr;
@@ -167,16 +165,14 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
         let builder = context.create_builder();
 
         let byte = context.i8_type();
-        let size_t = context.ptr_sized_int_type(
-            execution_engine.get_target_data(),
-            Some(AddressSpace::Generic),
-        );
+        let size_t =
+            context.ptr_sized_int_type(execution_engine.get_target_data(), Default::default());
         let getcharfn = module.add_function(
             "getchar",
             context.bool_type().fn_type(
                 &[
-                    byte.ptr_type(AddressSpace::Generic).into(),
-                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
+                    byte.ptr_type(Default::default()).into(),
+                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(Default::default())),
                 ],
                 false,
             ),
@@ -187,7 +183,7 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
             context.void_type().fn_type(
                 &[
                     byte.into(),
-                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
+                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(Default::default())),
                 ],
                 false,
             ),
@@ -198,8 +194,8 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
             "run",
             context.void_type().fn_type(
                 &[
-                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
-                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(AddressSpace::Generic)),
+                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(Default::default())),
+                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(Default::default())),
                 ],
                 false,
             ),
