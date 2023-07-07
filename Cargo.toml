@@ -11,7 +11,7 @@ default = ['llvm']
 llvm = ['inkwell']
 
 [dependencies]
-clap = '2.33.3'
+clap = '4.0'
 
 [dependencies.inkwell]
 git = 'https://github.com/TheDan64/inkwell'

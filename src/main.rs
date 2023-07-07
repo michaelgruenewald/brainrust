@@ -2,7 +2,7 @@ use std::fs;
 use std::io;
 use std::io::Read;
 
-use clap::{App, Arg};
+use clap::{Arg, ArgAction, Command};
 
 mod llvm_runner;
 mod optimizer;
@@ -18,36 +18,39 @@ use runner::State;
 use structs::OpStream;
 
 fn main() {
-    let app = App::new("BrainRust")
+    let command = Command::new("BrainRust")
         .arg(
-            Arg::with_name("dry-run")
-                .short("n")
+            Arg::new("dry-run")
+                .action(ArgAction::SetTrue)
+                .short('n')
                 .long("dry-run")
                 .help("Don't actually execute the program"),
         )
         .arg(
-            Arg::with_name("no-optimize")
-                .short("0")
+            Arg::new("no-optimize")
+                .action(ArgAction::SetTrue)
+                .short('0')
                 .long("no-optimize")
                 .help("Don't optimize before running"),
         )
-        .arg(Arg::with_name("FILES").min_values(1).required(true));
+        .arg(Arg::new("FILES").action(ArgAction::Append).required(true));
 
     #[cfg(feature = "llvm")]
-    let app = app.arg(
-        Arg::with_name("llvm")
-            .short("l")
+    let app = command.arg(
+        Arg::new("llvm")
+            .action(ArgAction::SetTrue)
+            .short('l')
             .long("llvm")
             .help("Execute using LLVM JIT"),
     );
 
     let matches = app.get_matches();
 
-    let dry_run = matches.is_present("dryrun");
-    let no_optimize = matches.is_present("no-optimize");
-    let use_llvm = cfg!(feature = "llvm") && matches.is_present("llvm");
+    let dry_run = matches.get_flag("dry-run");
+    let no_optimize = matches.get_flag("no-optimize");
+    let use_llvm = cfg!(feature = "llvm") && matches.get_flag("llvm");
 
-    for filename in matches.values_of("FILES").unwrap() {
+    for filename in matches.get_many::<String>("FILES").unwrap() {
         let buffer = match read_file(filename) {
             Ok(v) => v,
             Err(e) => {
