@@ -17,4 +17,4 @@ clap = '4.0'
 git = 'https://github.com/TheDan64/inkwell'
 branch = 'master'
 optional = true
-features = ['llvm11-0']
+features = ['llvm15-0']

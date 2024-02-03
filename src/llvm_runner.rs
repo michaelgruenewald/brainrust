@@ -42,11 +42,16 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
     }
 
     fn compile_add(&self, ptr: IntValue<'ctx>, i: &u8) -> Result<IntValue<'_>, BuilderError> {
-        let mem_ptr = unsafe { self.builder.build_gep(self.memory, &[ptr], "mem_ptr")? };
+        let mem_ptr = unsafe {
+            self.builder
+                .build_gep(self.byte, self.memory, &[ptr], "mem_ptr")?
+        };
         self.builder.build_store(
             mem_ptr,
             self.builder.build_int_add(
-                self.builder.build_load(mem_ptr, "v")?.into_int_value(),
+                self.builder
+                    .build_load(self.byte, mem_ptr, "v")?
+                    .into_int_value(),
                 self.byte.const_int((*i).into(), true),
                 "v",
             )?,
@@ -55,7 +60,10 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
     }
 
     fn compile_in(&self, ptr: IntValue<'ctx>) -> Result<IntValue<'_>, BuilderError> {
-        let mem_ptr = unsafe { self.builder.build_gep(self.memory, &[ptr], "mem_ptr")? };
+        let mem_ptr = unsafe {
+            self.builder
+                .build_gep(self.byte, self.memory, &[ptr], "mem_ptr")?
+        };
         let result = self
             .builder
             .build_call(self.getcharfn, &[mem_ptr.into(), self.state.into()], "call")
@@ -79,12 +87,15 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
     }
 
     fn compile_out(&self, ptr: IntValue<'ctx>) -> Result<IntValue<'_>, BuilderError> {
-        let mem_ptr = unsafe { self.builder.build_gep(self.memory, &[ptr], "mem_ptr")? };
+        let mem_ptr = unsafe {
+            self.builder
+                .build_gep(self.byte, self.memory, &[ptr], "mem_ptr")?
+        };
         self.builder.build_call(
             self.putcharfn,
             &[
                 self.builder
-                    .build_load(mem_ptr, "v")?
+                    .build_load(self.byte, mem_ptr, "v")?
                     .into_int_value()
                     .into(),
                 self.state.into(),
@@ -111,11 +122,16 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
         test_ptr_phi.add_incoming(&[(&ptr, current_block)]);
         let new_ptr = test_ptr_phi.as_basic_value().into_int_value();
 
-        let mem_ptr = unsafe { self.builder.build_gep(self.memory, &[new_ptr], "mem_ptr") }?;
+        let mem_ptr = unsafe {
+            self.builder
+                .build_gep(self.byte, self.memory, &[new_ptr], "mem_ptr")
+        }?;
         self.builder.build_conditional_branch(
             self.builder.build_int_compare(
                 IntPredicate::EQ,
-                self.builder.build_load(mem_ptr, "v")?.into_int_value(),
+                self.builder
+                    .build_load(self.byte, mem_ptr, "v")?
+                    .into_int_value(),
                 self.byte.const_int(0, false),
                 "iszero",
             )?,
