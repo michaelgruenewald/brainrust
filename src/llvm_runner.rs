@@ -1,17 +1,16 @@
 #![cfg(feature = "llvm")]
-use inkwell::types::BasicMetadataTypeEnum;
+use inkwell::types::{BasicMetadataTypeEnum, IntType};
 use inkwell::values::BasicMetadataValueEnum;
 use std::io::{Read, Write};
 
-use inkwell::builder::Builder;
+use inkwell::builder::{Builder, BuilderError};
 use inkwell::context::Context;
-use inkwell::execution_engine::ExecutionEngine;
 use inkwell::values::{FunctionValue, IntValue, PointerValue};
 use inkwell::IntPredicate;
 use inkwell::OptimizationLevel;
 
-use crate::structs::Op;
 use crate::structs::Op::*;
+use crate::structs::{Op, OpStream};
 
 const MEMSIZE: usize = 30000;
 
@@ -25,7 +24,6 @@ pub struct LlvmState<'a, R: Read, W: Write> {
 struct Compiler<'ctx, 'a> {
     context: &'ctx Context,
     builder: &'a Builder<'ctx>,
-    execution_engine: &'a ExecutionEngine<'ctx>,
     function: FunctionValue<'ctx>,
 
     memory: PointerValue<'ctx>,
@@ -33,126 +31,133 @@ struct Compiler<'ctx, 'a> {
 
     getcharfn: FunctionValue<'ctx>,
     putcharfn: FunctionValue<'ctx>,
+
+    size_t: IntType<'ctx>,
+    byte: IntType<'ctx>,
 }
 
 impl<'ctx, 'a> Compiler<'ctx, 'a> {
-    fn compile(&self, ops: &[Op], start_ptr: IntValue<'ctx>) -> IntValue<'ctx> {
-        let byte = self.context.i8_type();
-        let size_t = self
-            .context
-            .ptr_sized_int_type(self.execution_engine.get_target_data(), Default::default());
+    fn compile_mov(&self, ptr: IntValue<'ctx>, i: &isize) -> Result<IntValue<'_>, BuilderError> {
+        self.builder
+            .build_int_add(ptr, self.size_t.const_int((*i) as u64, true), "ptr")
+    }
 
-        let builder = self.builder;
+    fn compile_add(&self, ptr: IntValue<'ctx>, i: &u8) -> Result<(), BuilderError> {
+        let mem_ptr = unsafe { self.builder.build_gep(self.memory, &[ptr], "mem_ptr")? };
+        self.builder.build_store(
+            mem_ptr,
+            self.builder.build_int_add(
+                self.builder.build_load(mem_ptr, "v")?.into_int_value(),
+                self.byte.const_int((*i).into(), true),
+                "v",
+            )?,
+        )?;
+        Ok(())
+    }
+
+    fn compile_in(&self, ptr: IntValue<'ctx>) -> Result<(), BuilderError> {
+        let mem_ptr = unsafe { self.builder.build_gep(self.memory, &[ptr], "mem_ptr")? };
+        let result = self
+            .builder
+            .build_call(
+                self.getcharfn,
+                &[
+                    BasicMetadataValueEnum::PointerValue(mem_ptr),
+                    BasicMetadataValueEnum::PointerValue(self.state),
+                ],
+                "call",
+            )
+            .unwrap();
+        let exit_block = self.context.append_basic_block(self.function, "exit");
+        let next_block = self.context.append_basic_block(self.function, "next");
+        self.builder.build_conditional_branch(
+            self.builder.build_int_compare(
+                IntPredicate::EQ,
+                result.try_as_basic_value().left().unwrap().into_int_value(),
+                self.context.bool_type().const_zero(),
+                "eof",
+            )?,
+            exit_block,
+            next_block,
+        )?;
+        self.builder.position_at_end(exit_block);
+        self.builder.build_return(None).unwrap();
+        self.builder.position_at_end(next_block);
+        Ok(())
+    }
+
+    fn compile_out(&self, ptr: IntValue<'ctx>) -> Result<(), BuilderError> {
+        let mem_ptr = unsafe { self.builder.build_gep(self.memory, &[ptr], "mem_ptr")? };
+        self.builder.build_call(
+            self.putcharfn,
+            &[
+                BasicMetadataValueEnum::IntValue(
+                    self.builder.build_load(mem_ptr, "v")?.into_int_value(),
+                ),
+                BasicMetadataValueEnum::PointerValue(self.state),
+            ],
+            "call",
+        )?;
+        Ok(())
+    }
+
+    fn compile_loop(
+        &self,
+        ptr: IntValue<'ctx>,
+        ops: &OpStream,
+    ) -> Result<IntValue<'_>, BuilderError> {
+        let current_block = self.builder.get_insert_block().unwrap();
+        let test_block = self.context.append_basic_block(self.function, "test");
+        let body_block = self.context.append_basic_block(self.function, "body");
+        let next_block = self.context.append_basic_block(self.function, "next");
+
+        self.builder.build_unconditional_branch(test_block)?;
+        self.builder.position_at_end(test_block);
+
+        let test_ptr_phi = self.builder.build_phi(self.size_t, "ptr")?;
+        test_ptr_phi.add_incoming(&[(&ptr, current_block)]);
+        let new_ptr = test_ptr_phi.as_basic_value().into_int_value();
+
+        let mem_ptr = unsafe { self.builder.build_gep(self.memory, &[new_ptr], "mem_ptr") }?;
+        self.builder.build_conditional_branch(
+            self.builder.build_int_compare(
+                IntPredicate::EQ,
+                self.builder.build_load(mem_ptr, "v")?.into_int_value(),
+                self.byte.const_int(0, false),
+                "iszero",
+            )?,
+            next_block,
+            body_block,
+        )?;
+        self.builder.position_at_end(body_block);
+        let ptrreg_loop = self.compile(ops.get(), new_ptr);
+        test_ptr_phi.add_incoming(&[(&ptrreg_loop, self.builder.get_insert_block().unwrap())]);
+
+        self.builder.build_unconditional_branch(test_block)?;
+        self.builder.position_at_end(next_block);
+
+        Ok(new_ptr)
+    }
+
+    fn compile(&self, ops: &[Op], start_ptr: IntValue<'ctx>) -> IntValue<'_> {
         let mut ptr = start_ptr;
 
         for op in ops {
             match op {
                 Mov(i) => {
-                    ptr = builder
-                        .build_int_add(ptr, size_t.const_int((*i) as u64, true), "ptr")
-                        .unwrap();
+                    ptr = self.compile_mov(ptr, i).unwrap();
                 }
                 Add(i) => {
-                    let mem_ptr =
-                        unsafe { builder.build_gep(self.memory, &[ptr], "mem_ptr") }.unwrap();
-                    builder
-                        .build_store(
-                            mem_ptr,
-                            builder
-                                .build_int_add(
-                                    builder.build_load(mem_ptr, "v").unwrap().into_int_value(),
-                                    byte.const_int((*i).into(), true),
-                                    "v",
-                                )
-                                .unwrap(),
-                        )
-                        .unwrap();
+                    self.compile_add(ptr, i).unwrap();
                 }
                 In => {
-                    let mem_ptr =
-                        unsafe { builder.build_gep(self.memory, &[ptr], "mem_ptr") }.unwrap();
-                    let result = builder
-                        .build_call(
-                            self.getcharfn,
-                            &[
-                                BasicMetadataValueEnum::PointerValue(mem_ptr),
-                                BasicMetadataValueEnum::PointerValue(self.state),
-                            ],
-                            "call",
-                        )
-                        .unwrap();
-                    let exit_block = self.context.append_basic_block(self.function, "exit");
-                    let next_block = self.context.append_basic_block(self.function, "next");
-                    builder
-                        .build_conditional_branch(
-                            builder
-                                .build_int_compare(
-                                    IntPredicate::EQ,
-                                    result.try_as_basic_value().left().unwrap().into_int_value(),
-                                    self.context.bool_type().const_zero(),
-                                    "eof",
-                                )
-                                .unwrap(),
-                            exit_block,
-                            next_block,
-                        )
-                        .unwrap();
-                    builder.position_at_end(exit_block);
-                    builder.build_return(None).unwrap();
-                    builder.position_at_end(next_block);
+                    self.compile_in(ptr).unwrap();
                 }
                 Out => {
-                    let mem_ptr =
-                        unsafe { builder.build_gep(self.memory, &[ptr], "mem_ptr") }.unwrap();
-                    builder
-                        .build_call(
-                            self.putcharfn,
-                            &[
-                                BasicMetadataValueEnum::IntValue(
-                                    builder.build_load(mem_ptr, "v").unwrap().into_int_value(),
-                                ),
-                                BasicMetadataValueEnum::PointerValue(self.state),
-                            ],
-                            "call",
-                        )
-                        .unwrap();
+                    self.compile_out(ptr).unwrap();
                 }
                 Loop(ref ops) => {
-                    let current_block = self.builder.get_insert_block().unwrap();
-                    let test_block = self.context.append_basic_block(self.function, "test");
-                    let body_block = self.context.append_basic_block(self.function, "body");
-                    let next_block = self.context.append_basic_block(self.function, "next");
-
-                    builder.build_unconditional_branch(test_block).unwrap();
-                    builder.position_at_end(test_block);
-
-                    let test_ptr_phi = builder.build_phi(size_t, "ptr").unwrap();
-                    test_ptr_phi.add_incoming(&[(&ptr, current_block)]);
-                    ptr = test_ptr_phi.as_basic_value().into_int_value();
-
-                    let mem_ptr =
-                        unsafe { builder.build_gep(self.memory, &[ptr], "mem_ptr") }.unwrap();
-                    builder
-                        .build_conditional_branch(
-                            builder
-                                .build_int_compare(
-                                    IntPredicate::EQ,
-                                    builder.build_load(mem_ptr, "v").unwrap().into_int_value(),
-                                    byte.const_int(0, false),
-                                    "iszero",
-                                )
-                                .unwrap(),
-                            next_block,
-                            body_block,
-                        )
-                        .unwrap();
-                    builder.position_at_end(body_block);
-                    let ptrreg_loop = self.compile(ops.get(), ptr);
-                    test_ptr_phi
-                        .add_incoming(&[(&ptrreg_loop, self.builder.get_insert_block().unwrap())]);
-
-                    builder.build_unconditional_branch(test_block).unwrap();
-                    self.builder.position_at_end(next_block);
+                    ptr = self.compile_loop(ptr, ops).unwrap();
                 }
                 Transfer(_, _) => {
                     unimplemented!("Transfer is not implemented for the LLVM backend.");
@@ -229,7 +234,6 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
         let compiler = Compiler {
             context: &context,
             builder: &builder,
-            execution_engine: &execution_engine,
             function,
 
             memory: function.get_nth_param(0).unwrap().into_pointer_value(),
@@ -237,6 +241,10 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
 
             getcharfn,
             putcharfn,
+
+            size_t: context
+                .ptr_sized_int_type(execution_engine.get_target_data(), Default::default()),
+            byte: context.i8_type(),
         };
 
         compiler.compile(ops, size_t.const_zero());
