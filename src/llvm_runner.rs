@@ -1,6 +1,5 @@
 #![cfg(feature = "llvm")]
-use inkwell::types::{BasicMetadataTypeEnum, IntType};
-use inkwell::values::BasicMetadataValueEnum;
+use inkwell::types::IntType;
 use std::io::{Read, Write};
 
 use inkwell::builder::{Builder, BuilderError};
@@ -42,7 +41,7 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
             .build_int_add(ptr, self.size_t.const_int((*i) as u64, true), "ptr")
     }
 
-    fn compile_add(&self, ptr: IntValue<'ctx>, i: &u8) -> Result<(), BuilderError> {
+    fn compile_add(&self, ptr: IntValue<'ctx>, i: &u8) -> Result<IntValue<'_>, BuilderError> {
         let mem_ptr = unsafe { self.builder.build_gep(self.memory, &[ptr], "mem_ptr")? };
         self.builder.build_store(
             mem_ptr,
@@ -52,21 +51,14 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
                 "v",
             )?,
         )?;
-        Ok(())
+        Ok(ptr)
     }
 
-    fn compile_in(&self, ptr: IntValue<'ctx>) -> Result<(), BuilderError> {
+    fn compile_in(&self, ptr: IntValue<'ctx>) -> Result<IntValue<'_>, BuilderError> {
         let mem_ptr = unsafe { self.builder.build_gep(self.memory, &[ptr], "mem_ptr")? };
         let result = self
             .builder
-            .build_call(
-                self.getcharfn,
-                &[
-                    BasicMetadataValueEnum::PointerValue(mem_ptr),
-                    BasicMetadataValueEnum::PointerValue(self.state),
-                ],
-                "call",
-            )
+            .build_call(self.getcharfn, &[mem_ptr.into(), self.state.into()], "call")
             .unwrap();
         let exit_block = self.context.append_basic_block(self.function, "exit");
         let next_block = self.context.append_basic_block(self.function, "next");
@@ -83,22 +75,23 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
         self.builder.position_at_end(exit_block);
         self.builder.build_return(None).unwrap();
         self.builder.position_at_end(next_block);
-        Ok(())
+        Ok(ptr)
     }
 
-    fn compile_out(&self, ptr: IntValue<'ctx>) -> Result<(), BuilderError> {
+    fn compile_out(&self, ptr: IntValue<'ctx>) -> Result<IntValue<'_>, BuilderError> {
         let mem_ptr = unsafe { self.builder.build_gep(self.memory, &[ptr], "mem_ptr")? };
         self.builder.build_call(
             self.putcharfn,
             &[
-                BasicMetadataValueEnum::IntValue(
-                    self.builder.build_load(mem_ptr, "v")?.into_int_value(),
-                ),
-                BasicMetadataValueEnum::PointerValue(self.state),
+                self.builder
+                    .build_load(mem_ptr, "v")?
+                    .into_int_value()
+                    .into(),
+                self.state.into(),
             ],
             "call",
         )?;
-        Ok(())
+        Ok(ptr)
     }
 
     fn compile_loop(
@@ -140,32 +133,19 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
     }
 
     fn compile(&self, ops: &[Op], start_ptr: IntValue<'ctx>) -> IntValue<'_> {
-        let mut ptr = start_ptr;
-
-        for op in ops {
+        ops.iter().fold(start_ptr, |ptr, op| {
             match op {
-                Mov(i) => {
-                    ptr = self.compile_mov(ptr, i).unwrap();
-                }
-                Add(i) => {
-                    self.compile_add(ptr, i).unwrap();
-                }
-                In => {
-                    self.compile_in(ptr).unwrap();
-                }
-                Out => {
-                    self.compile_out(ptr).unwrap();
-                }
-                Loop(ref ops) => {
-                    ptr = self.compile_loop(ptr, ops).unwrap();
-                }
+                Mov(i) => self.compile_mov(ptr, i),
+                Add(i) => self.compile_add(ptr, i),
+                In => self.compile_in(ptr),
+                Out => self.compile_out(ptr),
+                Loop(ref ops) => self.compile_loop(ptr, ops),
                 Transfer(_, _) => {
-                    unimplemented!("Transfer is not implemented for the LLVM backend.");
+                    unimplemented!("Transfer is not implemented for the LLVM backend.")
                 }
             }
-        }
-
-        ptr
+            .unwrap()
+        })
     }
 }
 
@@ -199,7 +179,7 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
             context.bool_type().fn_type(
                 &[
                     byte.ptr_type(Default::default()).into(),
-                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(Default::default())),
+                    byte.ptr_type(Default::default()).into(),
                 ],
                 false,
             ),
@@ -208,10 +188,7 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
         let putcharfn = module.add_function(
             "putchar",
             context.void_type().fn_type(
-                &[
-                    byte.into(),
-                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(Default::default())),
-                ],
+                &[byte.into(), byte.ptr_type(Default::default()).into()],
                 false,
             ),
             None,
@@ -221,8 +198,8 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
             "run",
             context.void_type().fn_type(
                 &[
-                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(Default::default())),
-                    BasicMetadataTypeEnum::PointerType(byte.ptr_type(Default::default())),
+                    byte.ptr_type(Default::default()).into(),
+                    byte.ptr_type(Default::default()).into(),
                 ],
                 false,
             ),
