@@ -68,6 +68,8 @@ mod tests {
     fn test_opstream_optimize() {
         let mut opstream = OpStream {
             ops: vec![
+                Add(0),
+                Mov(0),
                 Mov(1),
                 Mov(1),
                 Add(0x01),
@@ -76,7 +78,7 @@ mod tests {
                 Mov(1),
                 Mov(-1),
                 Loop(OpStream {
-                    ops: vec![Mov(2), Mov(3)],
+                    ops: vec![Add(0), Mov(2), Mov(3), Mov(0)],
                 }),
             ],
         };
