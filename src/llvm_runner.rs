@@ -1,6 +1,7 @@
 #![cfg(feature = "llvm")]
 use inkwell::types::IntType;
 use std::io::{Read, Write};
+use std::slice::{from_mut, from_ref};
 
 use inkwell::builder::{Builder, BuilderError};
 use inkwell::context::Context;
@@ -91,17 +92,8 @@ impl<'ctx, 'a> Compiler<'ctx, 'a> {
             self.builder
                 .build_gep(self.byte, self.memory, &[ptr], "mem_ptr")?
         };
-        self.builder.build_call(
-            self.putcharfn,
-            &[
-                self.builder
-                    .build_load(self.byte, mem_ptr, "v")?
-                    .into_int_value()
-                    .into(),
-                self.state.into(),
-            ],
-            "call",
-        )?;
+        self.builder
+            .build_call(self.putcharfn, &[mem_ptr.into(), self.state.into()], "call")?;
         Ok(ptr)
     }
 
@@ -204,7 +196,10 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
         let putcharfn = module.add_function(
             "putchar",
             context.void_type().fn_type(
-                &[byte.into(), byte.ptr_type(Default::default()).into()],
+                &[
+                    byte.ptr_type(Default::default()).into(),
+                    byte.ptr_type(Default::default()).into(),
+                ],
                 false,
             ),
             None,
@@ -261,15 +256,10 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
     }
 
     extern "C" fn getchar(ch: &mut u8, state: &mut LlvmState<R, W>) -> bool {
-        let mut c = [0u8];
-        if state.input.read(&mut c).unwrap() == 0 {
-            return false;
-        }
-        *ch = c[0];
-        true
+        state.input.read(from_mut(ch)).unwrap() != 0
     }
 
-    extern "C" fn putchar(ch: u8, state: &mut LlvmState<R, W>) {
-        state.output.write_all(&[ch]).unwrap();
+    extern "C" fn putchar(ch: &u8, state: &mut LlvmState<R, W>) {
+        state.output.write_all(from_ref(ch)).unwrap();
     }
 }
