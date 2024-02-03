@@ -18,9 +18,7 @@ impl OpStream {
                 }
                 [Add(0), ..] | [Mov(0), ..] => {
                     self.ops.remove(i);
-                    if i > 0 {
-                        i -= 1;
-                    }
+                    i = i.saturating_sub(1);
                 }
                 [Loop(ref mut stream), ..] => {
                     stream.optimize();
