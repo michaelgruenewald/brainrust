@@ -179,15 +179,14 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
             .unwrap();
         let builder = context.create_builder();
 
-        let byte = context.i8_type();
         let size_t =
             context.ptr_sized_int_type(execution_engine.get_target_data(), Default::default());
         let getcharfn = module.add_function(
             "getchar",
             context.bool_type().fn_type(
                 &[
-                    byte.ptr_type(Default::default()).into(),
-                    byte.ptr_type(Default::default()).into(),
+                    context.ptr_type(Default::default()).into(),
+                    context.ptr_type(Default::default()).into(),
                 ],
                 false,
             ),
@@ -197,8 +196,8 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
             "putchar",
             context.void_type().fn_type(
                 &[
-                    byte.ptr_type(Default::default()).into(),
-                    byte.ptr_type(Default::default()).into(),
+                    context.ptr_type(Default::default()).into(),
+                    context.ptr_type(Default::default()).into(),
                 ],
                 false,
             ),
@@ -209,8 +208,8 @@ impl<'a, R: Read, W: Write> LlvmState<'a, R, W> {
             "run",
             context.void_type().fn_type(
                 &[
-                    byte.ptr_type(Default::default()).into(),
-                    byte.ptr_type(Default::default()).into(),
+                    context.ptr_type(Default::default()).into(),
+                    context.ptr_type(Default::default()).into(),
                 ],
                 false,
             ),
