@@ -34,10 +34,7 @@ pub fn parse(text: &[u8]) -> Result<Vec<Op>, String> {
             }
             b']' => {
                 let opstream = OpStream { ops: current };
-                current = match stack.pop() {
-                    Some(v) => v,
-                    None => return Err(format!("Stray ] at {}", position)),
-                };
+                current = stack.pop().ok_or(format!("Stray ] at {}", position))?;
                 current.push(Loop(opstream));
             }
             _ => {}
@@ -49,10 +46,12 @@ pub fn parse(text: &[u8]) -> Result<Vec<Op>, String> {
             position.column += 1;
         }
     }
-    if !stack.is_empty() {
-        return Err(format!("Missing ] at {}", position));
+
+    if stack.is_empty() {
+        Ok(current)
+    } else {
+        Err(format!("Missing ] at {}", position))
     }
-    Ok(current)
 }
 
 #[cfg(test)]
