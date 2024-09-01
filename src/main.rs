@@ -36,7 +36,7 @@ fn main() {
         .arg(Arg::new("FILES").action(ArgAction::Append).required(true));
 
     #[cfg(feature = "llvm")]
-    let app = command.arg(
+    let command = command.arg(
         Arg::new("llvm")
             .action(ArgAction::SetTrue)
             .short('l')
@@ -44,7 +44,7 @@ fn main() {
             .help("Execute using LLVM JIT"),
     );
 
-    let matches = app.get_matches();
+    let matches = command.get_matches();
 
     let dry_run = matches.get_flag("dry-run");
     let no_optimize = matches.get_flag("no-optimize");
