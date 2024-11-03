@@ -12,12 +12,12 @@ env:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     - uses: actions/checkout@v2
     - name: Install LLVM
-      run: sudo apt-get install llvm-11-dev libclang-common-11-dev
+      run: sudo apt-get install llvm-18-dev libclang-common-18-dev libpolly-18-dev
     - name: Build
       run: cargo build --verbose
     - name: Run tests
